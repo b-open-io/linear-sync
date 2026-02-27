@@ -1,0 +1,11 @@
+{
+  "name": "linear-sync",
+  "version": "0.0.1-alpha",
+  "description": "Linear-GitHub sync for Claude Code: issue tracking, commit enforcement, branch naming, and progress updates",
+  "author": {
+    "name": "danwag06",
+    "url": "https://github.com/danwag06"
+  },
+  "repository": "https://github.com/crystal-peak/linear-sync",
+  "keywords": ["linear", "github", "sync", "hooks", "issue-tracking"]
+}
