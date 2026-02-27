@@ -126,10 +126,10 @@ Linear Sync stores shared repo config in a committed file at `.claude/linear-syn
 {
   "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync, commit hooks, and branch naming. If you need to change the project or team, run the setup wizard again.",
-  "workspace": "openprotocollabs",
-  "project": "Linear Sync Test",
-  "team": "OPL",
-  "label": "repo:linear-sync-test"
+  "workspace": "crystalpeak",
+  "project": "My Project",
+  "team": "PEAK",
+  "label": "repo:my-repo"
 }
 ```
 

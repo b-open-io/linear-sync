@@ -411,8 +411,6 @@ linear-sync/                           # Plugin root
 
 ### Development Repo (this repo)
 
-Source files and specs used to develop linear-sync:
-
 ```
 linear-sync/
 ├── README.md                  # This file
@@ -427,9 +425,14 @@ linear-sync/
 ├── agents/
 │   └── linear-sync.md         # Subagent definition
 ├── hooks/
-│   ├── linear-session-start.sh
-│   ├── linear-commit-guard.sh
-│   └── linear-prompt-check.sh
+│   ├── hooks.json             # Hook registration
+│   └── scripts/
+│       ├── linear-session-start.sh
+│       ├── linear-commit-guard.sh
+│       ├── linear-prompt-check.sh
+│       ├── linear-post-push-sync.sh
+│       ├── linear-api-allow.sh
+│       └── linear-state-allow.sh
 └── scripts/
     ├── linear-api.sh
     ├── sync-github-issues.sh
@@ -483,9 +486,9 @@ For teams with shared conventions, commit a `.linear-sync-template.json` to the 
 
 ```json
 {
-  "workspace": "openprotocollabs",
+  "workspace": "crystalpeak",
   "project": "Project Atlas",
-  "team": "ENG",
+  "team": "PEAK",
   "label": "repo:my-repo"
 }
 ```
