@@ -9,7 +9,10 @@
   "plugins": [
     {
       "name": "linear-sync",
-      "source": ".",
+      "source": {
+        "source": "github",
+        "repo": "crystal-peak/linear-sync"
+      },
       "description": "Linear-GitHub sync for Claude Code: issue tracking, commit enforcement, branch naming, and progress updates",
       "version": "0.0.1-alpha",
       "author": {
