@@ -230,6 +230,12 @@ d = json.load(sys.stdin)
 print(d.get('last_issue', ''))
 " 2>/dev/null || echo "")
 
+  LAST_ISSUE_TITLE=$(printf '%s' "$REPO_ENTRY" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+print(d.get('last_issue_title', ''))
+" 2>/dev/null || echo "")
+
   # Detect stale branches (5+ days with no commits)
   STALE_BRANCHES=""
   CURRENT_BRANCH=$(cd "$GIT_TOP" 2>/dev/null && git branch --show-current 2>/dev/null || echo "")
@@ -298,7 +304,11 @@ print('true' if os.environ['MCP_SERVER'] in servers else 'false')
   CTX="[Linear/$WS_ID] Repo: $REPO_NAME | Workspace: $WS_NAME | Project: $PROJECT | Team: $TEAM | Label: $LABEL | Branch format: $TEAM-<number>-slug | Commit format: $TEAM-<number>: description | mcp_server: $MCP_SERVER | scripts_dir: $_SCRIPTS_DIR"
 
   if [ -n "$LAST_ISSUE" ]; then
-    CTX="$CTX | last_issue: $LAST_ISSUE"
+    if [ -n "$LAST_ISSUE_TITLE" ]; then
+      CTX="$CTX | last_issue: $LAST_ISSUE ($LAST_ISSUE_TITLE)"
+    else
+      CTX="$CTX | last_issue: $LAST_ISSUE"
+    fi
   fi
 
   if [ -n "$STALE_BRANCHES" ]; then

@@ -33,8 +33,8 @@ When the hook injects config context for a linked repo:
 If the hook context includes `last_issue: <ISSUE_ID>`, offer to resume that issue first:
 
 Use AskUserQuestion: "What are you working on today in <repo>?"
-1. **"Resume <ISSUE_ID>"** — Delegate to `linear-sync` subagent **(background)** to fetch the issue summary. After fetching, save `last_issue` for this repo (direct Read/Write — see Execution Model). Check for blockers in the response and warn if any.
-2. **"Work on a different issue"** — Delegate to `linear-sync` subagent **(background)** to fetch the dev's assigned in-progress issues ("Fetch My Issues" task). Present the returned list as AskUserQuestion choices, plus an option to "Enter an issue ID manually". After selection, save `last_issue` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
+1. **"Resume <ISSUE_ID>: <title>"** (use the title from hook context if available, e.g. "Resume PEAK-153: modernize plugin to use native Linear MCP tools") — Delegate to `linear-sync` subagent **(background)** to fetch the issue summary. After fetching, save `last_issue` and `last_issue_title` for this repo (direct Read/Write — see Execution Model). Check for blockers in the response and warn if any.
+2. **"Work on a different issue"** — Delegate to `linear-sync` subagent **(background)** to fetch the dev's assigned in-progress issues ("Fetch My Issues" task). Present the returned list as AskUserQuestion choices, plus an option to "Enter an issue ID manually". After selection, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
 3. **"Start something new"** — Ask for a one-line description via AskUserQuestion. Check for duplicates first (see Duplicate Detection below). Then delegate to `linear-sync` subagent (foreground) to create a ticket in the correct project with the repo label. After creation, offer to assign to current cycle (see Cycle Assignment below). Use the returned issue ID going forward.
 4. **"Just exploring / no ticket needed"** — Proceed normally. The commit guard hook will catch untagged commits later and you can offer to create a ticket at that point.
 
@@ -268,7 +268,7 @@ Put `QUERY=` and `bash` on separate lines (not chained with `&&`). The auto-appr
 
 ### Read/Write tools (no Bash needed)
 Use the Read and Write tools for state file updates — no permission prompts, no subagent overhead:
-- **Save last_issue**: Read `~/.claude/linear-sync/state.json`, update `repos.<repo>.last_issue`, Write back
+- **Save last_issue**: Read `~/.claude/linear-sync/state.json`, update `repos.<repo>.last_issue` and `repos.<repo>.last_issue_title`, Write back
 - **Opt repo out**: Read state file, set `repos.<repo>.workspace` to `"none"`, Write back
 
 ## Companion Files

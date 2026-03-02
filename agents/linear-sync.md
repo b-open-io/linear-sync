@@ -213,7 +213,7 @@ When the main agent asks you to set up a repo:
 2. Use `mcp__<server>__list_workflow_states` to find the "In Progress" state (type: `started`) for the team.
 3. Use `mcp__<server>__create_issue` with title, stateId set to In Progress, projectId, and repo label.
 4. If priority specified (0-4), include it.
-5. Save as `last_issue` in state file.
+5. Save as `last_issue` and `last_issue_title` in state file.
 6. Return: "Created <ISSUE_ID>: <title> in <project> (In Progress)."
 
 ### Fetch My Issues
