@@ -20,6 +20,12 @@ HAS_API_CALL=false
 while IFS= read -r line; do
   # Skip empty lines
   [[ -z "$line" ]] && continue
+  # bash linear-api.sh call (with or without quoted path, with or without env-var prefix)
+  # Must check BEFORE variable assignment since VAR=val bash ... looks like an assignment
+  if echo "$line" | grep -qE '^\s*(([A-Za-z_][A-Za-z_0-9]*="?[^"]*"?\s+)*)?bash\s+"?[^"]*linear-api\.sh"?(\s|$)'; then
+    HAS_API_CALL=true
+    continue
+  fi
   # Variable assignment: VAR='...' or VAR="..." or VAR=value
   # Must NOT contain && or || or ; (use separate lines for chaining)
   if echo "$line" | grep -qE '^\s*[A-Za-z_][A-Za-z_0-9]*=' && ! echo "$line" | grep -qE '&&|\|\||;'; then
@@ -27,11 +33,6 @@ while IFS= read -r line; do
   fi
   # Safe shell builtins: set +H (disable history expansion), export, shopt
   if echo "$line" | grep -qE '^\s*(set\s+[+-][A-Za-z]|set\s+[+-]o\s+\w+|export\s+[A-Za-z_]|shopt\s)'; then
-    continue
-  fi
-  # bash linear-api.sh call (with or without quoted path)
-  if echo "$line" | grep -qE '^\s*bash\s+"?[^"]*linear-api\.sh"?(\s|$)'; then
-    HAS_API_CALL=true
     continue
   fi
   # Unknown line — not safe

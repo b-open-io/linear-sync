@@ -54,18 +54,20 @@ Use that as the tool prefix: `mcp__<mcp_server>__<tool_name>`.
 
 ### Fallback: linear-api.sh
 
-Use `linear-api.sh` when MCP tools are unavailable or can't handle the operation. The script reads API keys from `~/.claude/mcp.json` internally.
+Use `linear-api.sh` when MCP tools are unavailable or can't handle the operation. The script reads API keys from `~/.claude/mcp.json` internally. **NEVER set environment variables like `LINEAR_API_KEY=...` before the bash call** — the script handles authentication itself. Prefixing env vars breaks the auto-approve hook and is unnecessary.
+
+**CRITICAL: Always pass the MCP server name as the first argument.** Omitting it defaults to the wrong workspace.
 
 ```bash
-# Path is provided in delegation prompt as scripts_dir
-bash /path/to/scripts/linear-api.sh 'query { viewer { id name } }'
+# Server name is ALWAYS the first arg — NEVER omit it
+bash /path/to/scripts/linear-api.sh <server-name> 'query { viewer { id name } }'
 
-# Multi-workspace (specify server name as first arg)
-bash /path/to/scripts/linear-api.sh linear-opl 'query { teams { nodes { id name key } } }'
+# Example with linear-crystalpeak
+bash /path/to/scripts/linear-api.sh linear-crystalpeak 'query { teams { nodes { id name key } } }'
 
 # With GraphQL variables (for mutations with user-provided text)
 QUERY=$(printf 'mutation($input: IssueCreateInput%s) { issueCreate(input: $input) { issue { id identifier title } } }' '!')
-bash /path/to/scripts/linear-api.sh "$QUERY" '{"input": {"teamId": "TEAM_ID", "title": "My Title"}}'
+bash /path/to/scripts/linear-api.sh linear-crystalpeak "$QUERY" '{"input": {"teamId": "TEAM_ID", "title": "My Title"}}'
 ```
 
 **Bang escaping**: The Bash tool escapes `!` to `\!` even inside single quotes. Always use `printf` on a separate line (not chained with `&&`) to inject `!` safely. Queries without `!` can use normal single-line syntax.
@@ -84,19 +86,19 @@ Use `mcp__<server>__list_issues` with a filter like `{ project: { name: { contai
 **List workflow states (for setting status):**
 Use `mcp__<server>__list_workflow_states` filtered by team key. Find the state matching the desired type (e.g., `started` for "In Progress").
 
-**GraphQL fallback patterns** (when using `linear-api.sh`):
+**GraphQL fallback patterns** (when using `linear-api.sh` — always include server name):
 ```bash
 # List teams
-bash "$API_SCRIPT" 'query { teams { nodes { id name key } } }'
+bash "$API_SCRIPT" "$MCP_SERVER" 'query { teams { nodes { id name key } } }'
 
 # Get issue
-bash "$API_SCRIPT" 'query { issue(id: "ENG-123") { id title state { id name } assignee { name } } }'
+bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "ENG-123") { id title state { id name } assignee { name } } }'
 
 # Search labels
-bash "$API_SCRIPT" 'query { issueLabels(filter: { name: { eq: "repo:api" } }) { nodes { id name } } }'
+bash "$API_SCRIPT" "$MCP_SERVER" 'query { issueLabels(filter: { name: { eq: "repo:api" } }) { nodes { id name } } }'
 
 # Create label
-bash "$API_SCRIPT" 'mutation { issueLabelCreate(input: { teamId: "TEAM_ID", name: "repo:api" }) { issueLabel { id name } } }'
+bash "$API_SCRIPT" "$MCP_SERVER" 'mutation { issueLabelCreate(input: { teamId: "TEAM_ID", name: "repo:api" }) { issueLabel { id name } } }'
 ```
 
 ### Multi-workspace
