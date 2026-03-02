@@ -111,6 +111,6 @@ if [ -z "$MATCHES" ]; then
   exit 0
 fi
 
-CTX="[Linear/$WORKSPACE_ID] Issue(s) referenced: $MATCHES. Delegate to linear-sync subagent (background) to fetch summaries."
+CTX="[Linear/$WORKSPACE_ID] Issue(s) referenced: $MATCHES. Invoke the /linear-sync skill — delegate to the linear-sync subagent to fetch summaries."
 emit "$CTX"
 exit 0

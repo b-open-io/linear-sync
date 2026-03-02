@@ -4,7 +4,7 @@
 
 ## Linear Sync
 
-This system keeps Linear and GitHub in sync automatically. All Linear API calls go through the `linear-sync` subagent — never call Linear MCP directly from the main context.
+This system keeps Linear and GitHub in sync automatically. Simple mutations use direct MCP tool calls (`mcp__<server>__<tool>`); multi-step queries go through the `linear-sync` subagent.
 
 ### Session Start Behavior
 
@@ -43,7 +43,7 @@ Use AskUserQuestion: "What are you working on today in <repo>?"
 
 If no `last_issue` is present, skip option 1 and start with options 2-5 (renumber accordingly).
 
-**When the dev picks any issue (resume, existing, or new):** If the issue is unassigned, automatically delegate to `linear-sync` subagent (background) to assign it to the dev ("Assign Issue to Viewer" task). No need to ask — if they're working on it, they should own it.
+**When the dev picks any issue (resume, existing, or new):** If the issue is unassigned, auto-assign it via direct MCP call (`mcp__<server>__update_issue`). No need to ask — if they're working on it, they should own it.
 
 Keep the kickoff brief and natural: "What are you working on today in <repo>?"
 
@@ -83,7 +83,7 @@ These conventions are mechanically enforced by hooks. They apply ONLY to repos w
 | Issue creation | Check for duplicates first | Subagent search + AskUserQuestion |
 | Issue creation | Infer priority from keywords | AskUserQuestion if detected |
 | Issue creation | Offer cycle/sprint assignment | AskUserQuestion if active cycle |
-| Issue picked / resumed | Auto-assign if unassigned | Subagent handles silently |
+| Issue picked / resumed | Auto-assign if unassigned | Direct MCP (`update_issue`) |
 | `gh pr create` (after success) | **Offer** a progress comment on the Linear issue | AskUserQuestion |
 | `git push` (final push before wrapping up) | **Offer** a progress comment on the Linear issue | AskUserQuestion |
 | Session ending / major milestone | **Offer** a progress comment on the Linear issue | AskUserQuestion |
@@ -118,7 +118,7 @@ them exactly what will be posted first. If they skip, don't ask again until the 
 
 ### Issue Status
 
-**If the dev explicitly asks to change a status, do it.** No pushback, no warnings. Just delegate to the linear-sync subagent and confirm.
+**If the dev explicitly asks to change a status, do it.** No pushback, no warnings. Use direct MCP call (`mcp__<server>__update_issue`) and confirm.
 
 For **automatic** status changes (no explicit request), only act at these moments:
 
@@ -220,7 +220,7 @@ When creating a new issue (via "Start something new" or blocked commit recovery)
    1. Yes
    2. No
    ```
-3. If the dev says yes, delegate to the subagent to add the issue to the cycle.
+3. If the dev says yes, use direct MCP call (`mcp__<server>__update_issue` with `cycleId`).
 4. If no active cycle, skip silently.
 
 ### Priority Inference
@@ -282,9 +282,11 @@ When the setup wizard runs and a template is found, pre-fill the choices from th
 
 ### Context Conservation
 
-- **Never call Linear MCP directly** from the main context window. Always delegate to the `linear-sync` subagent.
-- Use **background** mode for ongoing work (fetching summaries, posting comments, creating issues during normal flow).
-- Use **foreground** mode only during one-time setup wizard flows.
+Operations use a tiered model to minimize context consumption:
+- **Tier 1: Direct MCP** — Main agent handles simple mutations directly (`mcp__<server>__update_issue`, `mcp__<server>__create_comment`, `mcp__<server>__get_issue`). Determine `<server>` from the `mcp_server` field in session-start context; default to `linear`.
+- **Tier 2: Background subagent** — Multi-step queries (fetch issue summary, fetch my issues, search for duplicates) go through the `linear-sync` subagent in background mode.
+- **Tier 3: Foreground subagent** — Only for operations where the main agent blocks on the result (create issue, setup wizard, fetch active cycle).
+- **Tier 4: Bash fallback** — `linear-api.sh` only when MCP tools can't handle the operation.
 - The hooks inject minimal `additionalContext` strings — they do not dump API data into the context.
 
 <!-- ===== End Linear Sync ===== -->

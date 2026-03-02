@@ -268,7 +268,34 @@ else:
   _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   _SCRIPTS_DIR="$(cd "$_HOOK_DIR/../../scripts" 2>/dev/null && pwd)"
 
-  CTX="[Linear/$WS_ID] Repo: $REPO_NAME | Workspace: $WS_NAME | Project: $PROJECT | Team: $TEAM | Label: $LABEL | Branch format: $TEAM-<number>-slug | Commit format: $TEAM-<number>: description | scripts_dir: $_SCRIPTS_DIR"
+  # Resolve MCP server name from workspace entry (default: "linear")
+  MCP_SERVER=$(STATE_FILE="$STATE_FILE" WS_ID="$WS_ID" python3 -c "
+import json, os
+with open(os.environ['STATE_FILE']) as f:
+    data = json.load(f)
+ws = data.get('workspaces', {}).get(os.environ['WS_ID'], {})
+print(ws.get('mcp_server', 'linear'))
+" 2>/dev/null || echo "linear")
+
+  # Check if the MCP server is configured in ~/.claude/mcp.json
+  MCP_JSON="$HOME/.claude/mcp.json"
+  MCP_SERVER_MISSING=""
+  if [ -f "$MCP_JSON" ]; then
+    MCP_SERVER_EXISTS=$(MCP_JSON="$MCP_JSON" MCP_SERVER="$MCP_SERVER" python3 -c "
+import json, os
+with open(os.environ['MCP_JSON']) as f:
+    data = json.load(f)
+servers = data.get('mcpServers', {})
+print('true' if os.environ['MCP_SERVER'] in servers else 'false')
+" 2>/dev/null || echo "false")
+    if [ "$MCP_SERVER_EXISTS" = "false" ]; then
+      MCP_SERVER_MISSING="true"
+    fi
+  else
+    MCP_SERVER_MISSING="true"
+  fi
+
+  CTX="[Linear/$WS_ID] Repo: $REPO_NAME | Workspace: $WS_NAME | Project: $PROJECT | Team: $TEAM | Label: $LABEL | Branch format: $TEAM-<number>-slug | Commit format: $TEAM-<number>: description | mcp_server: $MCP_SERVER | scripts_dir: $_SCRIPTS_DIR"
 
   if [ -n "$LAST_ISSUE" ]; then
     CTX="$CTX | last_issue: $LAST_ISSUE"
@@ -277,6 +304,11 @@ else:
   if [ -n "$STALE_BRANCHES" ]; then
     CTX="$CTX
 [STALE-BRANCHES] Stale local branches (no commits in 5+ days): $STALE_BRANCHES"
+  fi
+
+  if [ "$MCP_SERVER_MISSING" = "true" ]; then
+    CTX="$CTX
+[LINEAR-MCP-MISSING] The Linear MCP server \"$MCP_SERVER\" is not configured in ~/.claude/mcp.json. Linear MCP tools are required for this plugin. Tell the user to install it by adding this to ~/.claude/mcp.json under \"mcpServers\": {\"$MCP_SERVER\": {\"type\": \"stdio\", \"command\": \"npx\", \"args\": [\"-y\", \"@anthropic/linear-mcp-server\"], \"env\": {\"LINEAR_API_KEY\": \"\${LINEAR_API_KEY}\"}}} — they need a Linear Personal API Key (Settings > API > Personal API keys). After adding, restart Claude Code. Until installed, the plugin will fall back to linear-api.sh for API calls."
   fi
 
   # Digest trigger (only if not triggered in the last 4 hours)
@@ -347,7 +379,7 @@ $_DIGEST"
   fi
 
   CTX="$CTX
-Follow the Linear Sync workflow skill instructions to ask the dev what they're working on today in $REPO_NAME."
+IMPORTANT: Invoke the /linear-sync skill now to handle this session kickoff for $REPO_NAME."
   emit "$CTX"
   exit 0
 fi
