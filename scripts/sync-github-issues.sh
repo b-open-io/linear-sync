@@ -54,25 +54,34 @@ fi
 
 FULL_REPO="$GITHUB_ORG/$REPO_NAME"
 
-# ---------- Phase 1: Gather data ----------
+# ---------- Phase 1: Gather data (parallel) ----------
 
-# Fetch open GitHub issues
-GH_ISSUES=$(gh issue list --repo "$FULL_REPO" --state open --json number,title,body,url --limit 500 2>/dev/null || echo "[]")
+GH_TMP=$(mktemp)
+LINEAR_TMP=$(mktemp)
 
-GH_COUNT=$(echo "$GH_ISSUES" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
-if [ "$GH_COUNT" = "0" ]; then
-  :
-fi
+# Fetch GitHub issues and Linear issues in parallel
+gh issue list --repo "$FULL_REPO" --state open --json number,title,body,url --limit 500 >"$GH_TMP" 2>/dev/null &
+PID_GH=$!
 
-# Fetch Linear issues in this project with repo label
-LINEAR_ISSUES=$(bash "$API_SCRIPT" "query {
+bash "$API_SCRIPT" "query {
   issues(filter: {
     project: { name: { eq: \"$PROJECT\" } },
     labels: { some: { name: { eq: \"$LABEL\" } } }
   }, first: 250) {
     nodes { id identifier title description state { name type } }
   }
-}")
+}" >"$LINEAR_TMP" &
+PID_LINEAR=$!
+
+wait "$PID_GH" || echo "[]" > "$GH_TMP"
+wait "$PID_LINEAR"
+
+GH_ISSUES=$(cat "$GH_TMP")
+LINEAR_ISSUES=$(cat "$LINEAR_TMP")
+rm -f "$GH_TMP" "$LINEAR_TMP"
+
+[ -z "$GH_ISSUES" ] && GH_ISSUES="[]"
+GH_COUNT=$(echo "$GH_ISSUES" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
 
 # ---------- Phase 2: GitHub -> Linear (create missing) ----------
 
@@ -105,22 +114,34 @@ print(json.dumps(unsynced))
   UNSYNCED_COUNT=$(echo "$UNSYNCED" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
 
   if [ "$UNSYNCED_COUNT" != "0" ]; then
-    TEAM_ID=$(bash "$API_SCRIPT" "query { teams(filter: { key: { eq: \"$TEAM\" } }) { nodes { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['teams']['nodes'][0]['id'])")
+    # Fetch team, project, and label IDs in parallel
+    TEAM_TMP=$(mktemp); PROJECT_TMP=$(mktemp); LABEL_TMP=$(mktemp)
 
-    PROJECT_ID=$(bash "$API_SCRIPT" "query { projects(filter: { name: { eq: \"$PROJECT\" } }) { nodes { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['projects']['nodes'][0]['id'])")
+    bash "$API_SCRIPT" "query { teams(filter: { key: { eq: \"$TEAM\" } }) { nodes { id } } }" >"$TEAM_TMP" &
+    PID_TEAM=$!
+    bash "$API_SCRIPT" "query { projects(filter: { name: { eq: \"$PROJECT\" } }) { nodes { id } } }" >"$PROJECT_TMP" &
+    PID_PROJECT=$!
+    bash "$API_SCRIPT" "query { issueLabels(filter: { name: { eq: \"$LABEL\" } }) { nodes { id } } }" >"$LABEL_TMP" &
+    PID_LABEL=$!
 
-    LABEL_ID=$(bash "$API_SCRIPT" "query { issueLabels(filter: { name: { eq: \"$LABEL\" } }) { nodes { id } } }" | python3 -c "
-import json, sys
-nodes = json.load(sys.stdin)['data']['issueLabels']['nodes']
+    wait "$PID_TEAM" "$PID_PROJECT" "$PID_LABEL"
+
+    TEAM_ID=$(python3 -c "import json; print(json.load(open('$TEAM_TMP'))['data']['teams']['nodes'][0]['id'])")
+    PROJECT_ID=$(python3 -c "import json; print(json.load(open('$PROJECT_TMP'))['data']['projects']['nodes'][0]['id'])")
+    LABEL_ID=$(python3 -c "
+import json
+nodes = json.load(open('$LABEL_TMP'))['data']['issueLabels']['nodes']
 print(nodes[0]['id'] if nodes else '')
 ")
+    rm -f "$TEAM_TMP" "$PROJECT_TMP" "$LABEL_TMP"
 
     if [ -z "$LABEL_ID" ]; then
       LABEL_ID=$(bash "$API_SCRIPT" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"$LABEL\" }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
     fi
 
-    CREATED_FILE=$(mktemp)
-    echo "0" > "$CREATED_FILE"
+    # Create Linear issues in parallel (up to 5 concurrent)
+    MAX_CONCURRENT=5
+    CREATED_DIR=$(mktemp -d)
 
     echo "$UNSYNCED" | python3 -c "
 import json, sys
@@ -128,14 +149,15 @@ issues = json.load(sys.stdin)
 for i in issues:
     print(json.dumps(i))
 " | while IFS= read -r ISSUE_JSON; do
-      NUMBER=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['number'])")
-      TITLE=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['title'])")
-      BODY=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('body') or '')")
-      URL=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['url'])")
+      (
+        NUMBER=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['number'])")
+        TITLE=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['title'])")
+        BODY=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('body') or '')")
+        URL=$(echo "$ISSUE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['url'])")
 
-      VARS=$(TEAM_ID="$TEAM_ID" PROJECT_ID="$PROJECT_ID" LABEL_ID="$LABEL_ID" \
-             NUMBER="$NUMBER" TITLE="$TITLE" BODY="$BODY" URL="$URL" FULL_REPO="$FULL_REPO" \
-             python3 -c "
+        VARS=$(TEAM_ID="$TEAM_ID" PROJECT_ID="$PROJECT_ID" LABEL_ID="$LABEL_ID" \
+               NUMBER="$NUMBER" TITLE="$TITLE" BODY="$BODY" URL="$URL" FULL_REPO="$FULL_REPO" \
+               python3 -c "
 import json, os
 body = os.environ['BODY']
 url = os.environ['URL']
@@ -156,22 +178,31 @@ print(json.dumps({'input': {
 }}))
 ")
 
-      RESULT=$(bash "$API_SCRIPT" \
-        'mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { identifier title } } }' \
-        "$VARS" 2>&1)
+        RESULT=$(bash "$API_SCRIPT" \
+          'mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { identifier title } } }' \
+          "$VARS" 2>&1)
 
-      IDENTIFIER=$(echo "$RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('issueCreate',{}).get('issue',{}).get('identifier','FAILED'))" 2>/dev/null || echo "FAILED")
+        IDENTIFIER=$(echo "$RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('issueCreate',{}).get('issue',{}).get('identifier','FAILED'))" 2>/dev/null || echo "FAILED")
 
-      if [ "$IDENTIFIER" != "FAILED" ]; then
-        echo "$(( $(cat "$CREATED_FILE") + 1 ))" > "$CREATED_FILE"
-        echo "  Created $IDENTIFIER from GH#$NUMBER" >&2
-      else
-        echo "  Failed to create from GH#$NUMBER: $RESULT" >&2
-      fi
+        if [ "$IDENTIFIER" != "FAILED" ]; then
+          touch "$CREATED_DIR/$NUMBER"
+          echo "  Created $IDENTIFIER from GH#$NUMBER" >&2
+        else
+          echo "  Failed to create from GH#$NUMBER: $RESULT" >&2
+        fi
+      ) &
+
+      # Throttle: wait if we have MAX_CONCURRENT background jobs
+      while [ "$(jobs -rp | wc -l)" -ge "$MAX_CONCURRENT" ]; do
+        wait -n 2>/dev/null || true
+      done
     done
 
-    CREATED=$(cat "$CREATED_FILE")
-    rm -f "$CREATED_FILE"
+    # Wait for all remaining creation jobs
+    wait
+
+    CREATED=$(find "$CREATED_DIR" -type f | wc -l | tr -d ' ')
+    rm -rf "$CREATED_DIR"
   fi
 fi
 
@@ -201,29 +232,37 @@ print(json.dumps(closable))
 CLOSABLE_COUNT=$(echo "$CLOSABLE" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
 
 if [ "$CLOSABLE_COUNT" != "0" ]; then
-  CLOSED_FILE=$(mktemp)
-  echo "0" > "$CLOSED_FILE"
+  CLOSED_DIR=$(mktemp -d)
 
   echo "$CLOSABLE" | python3 -c "
 import json, sys
 for item in json.load(sys.stdin):
     print(json.dumps(item))
 " | while IFS= read -r ITEM_JSON; do
-    NUMBER=$(echo "$ITEM_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['number'])")
-    IDENTIFIER=$(echo "$ITEM_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['identifier'])")
+    (
+      NUMBER=$(echo "$ITEM_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['number'])")
+      IDENTIFIER=$(echo "$ITEM_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['identifier'])")
 
-    GH_STATE=$(gh issue view "$NUMBER" --repo "$FULL_REPO" --json state -q '.state' 2>/dev/null || echo "UNKNOWN")
+      GH_STATE=$(gh issue view "$NUMBER" --repo "$FULL_REPO" --json state -q '.state' 2>/dev/null || echo "UNKNOWN")
 
-    if [ "$GH_STATE" = "OPEN" ]; then
-      gh issue close "$NUMBER" --repo "$FULL_REPO" --comment "Closed via Linear ($IDENTIFIER)." 2>/dev/null && {
-        echo "$(( $(cat "$CLOSED_FILE") + 1 ))" > "$CLOSED_FILE"
-        echo "  Closed GH#$NUMBER via $IDENTIFIER" >&2
-      }
-    fi
+      if [ "$GH_STATE" = "OPEN" ]; then
+        gh issue close "$NUMBER" --repo "$FULL_REPO" --comment "Closed via Linear ($IDENTIFIER)." 2>/dev/null && {
+          touch "$CLOSED_DIR/$NUMBER"
+          echo "  Closed GH#$NUMBER via $IDENTIFIER" >&2
+        }
+      fi
+    ) &
+
+    # Throttle: up to 5 concurrent close operations
+    while [ "$(jobs -rp | wc -l)" -ge 5 ]; do
+      wait -n 2>/dev/null || true
+    done
   done
 
-  CLOSED=$(cat "$CLOSED_FILE")
-  rm -f "$CLOSED_FILE"
+  wait
+
+  CLOSED=$(find "$CLOSED_DIR" -type f | wc -l | tr -d ' ')
+  rm -rf "$CLOSED_DIR"
 fi
 
 # ---------- Phase 4: Summary ----------
