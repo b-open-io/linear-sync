@@ -283,7 +283,7 @@ When the setup wizard runs and a template is found, pre-fill the choices from th
 ### Context Conservation
 
 Operations use a tiered model to minimize context consumption:
-- **Tier 1: Direct MCP** — Main agent handles simple mutations directly (`mcp__<server>__update_issue`, `mcp__<server>__create_comment`, `mcp__<server>__get_issue`). Determine `<server>` from the `mcp_server` field in session-start context; default to `linear`.
+- **Tier 1: Direct MCP** — Main agent handles simple mutations directly (`mcp__<server>__update_issue`, `mcp__<server>__create_comment`, `mcp__<server>__get_issue`). Determine `<server>` from the `mcp_server` field in session-start context. **Never default to `linear`** — if missing, read the workspace's `mcp_server` from `~/.claude/linear-sync/state.json`.
 - **Tier 2: Background subagent** — Multi-step queries (fetch issue summary, fetch my issues, search for duplicates) go through the `linear-sync` subagent in background mode.
 - **Tier 3: Foreground subagent** — Only for operations where the main agent blocks on the result (create issue, setup wizard, fetch active cycle).
 - **Tier 4: Bash fallback** — `linear-api.sh` only when MCP tools can't handle the operation.

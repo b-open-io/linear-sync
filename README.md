@@ -67,7 +67,7 @@ flowchart TB
 | **Post-Push Sync Hook** | `hooks/scripts/linear-post-push-sync.sh` | Runs GitHub sync after `git push` / `gh pr create`, injects comment reminder |
 | **API Auto-Approve Hook** | `hooks/scripts/linear-api-allow.sh` | Auto-approves `bash linear-api.sh` commands (prevents permission prompts) |
 | **State Auto-Approve Hook** | `hooks/scripts/linear-state-allow.sh` | Auto-approves Read/Write on state file and plugin paths |
-| **Subagent** | `agents/linear-sync.md` | Handles Linear API queries, state persistence, config setup |
+| **Subagent** | `agents/api.md` | Handles Linear API queries, state persistence, config setup |
 | **Skill** | `skills/linear-sync/SKILL.md` | Behavioral instructions loaded by the main agent on trigger |
 | **API Wrapper** | `scripts/linear-api.sh` | Reads API key from mcp.json, calls Linear GraphQL API |
 | **GitHub Sync Script** | `scripts/sync-github-issues.sh` | Bidirectional sync between GitHub Issues and Linear |
@@ -511,7 +511,7 @@ To opt out after setup, delete the repo entry from `~/.claude/linear-sync/state.
 
 **Uninstall (plugin)?** Run `claude plugin remove linear-sync`.
 
-**Uninstall (standalone)?** Remove hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/linear-sync.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
+**Uninstall (standalone)?** Remove hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
 ## License
 

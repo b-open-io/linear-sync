@@ -134,7 +134,7 @@ Synced 3 new issues from GitHub, closed 1 GitHub issue from Linear.
 
 ### 1. New Subagent Task: `sync-github-issues`
 
-Add this task to `~/.claude/agents/linear-sync.md` under the `## Tasks` section.
+Add this task to `~/.claude/agents/api.md` under the `## Tasks` section.
 
 #### Inputs (from main agent)
 
@@ -342,7 +342,7 @@ Cache these IDs for the duration of a single sync run (they're used repeatedly w
 
 | File | Change |
 |------|--------|
-| `~/.claude/agents/linear-sync.md` | Add `### Sync GitHub Issues` task under `## Tasks` |
+| `~/.claude/agents/api.md` | Add `### Sync GitHub Issues` task under `## Tasks` |
 | `~/.claude/hooks/linear-session-start.sh` | Add config resolution from repo file + sync-available hint |
 | `~/.claude/hooks/linear-commit-guard.sh` | Add config resolution from repo file (for team prefix) |
 | `~/.claude/CLAUDE.md` | Add "Sync GitHub issues" kickoff option + update setup wizard to write repo-level config |

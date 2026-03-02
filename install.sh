@@ -34,8 +34,8 @@ mkdir -p "$CLAUDE_DIR/scripts"
 
 # ---------- 2. Copy subagent ----------
 echo "[2/8] Installing subagent definition..."
-cp "$SCRIPT_DIR/agents/linear-sync.md" "$CLAUDE_DIR/agents/linear-sync.md"
-echo "  -> ~/.claude/agents/linear-sync.md"
+cp "$SCRIPT_DIR/agents/api.md" "$CLAUDE_DIR/agents/api.md"
+echo "  -> ~/.claude/agents/api.md"
 
 # ---------- 3. Copy hook scripts and API wrapper ----------
 echo "[3/8] Installing hook scripts..."

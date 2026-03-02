@@ -215,7 +215,7 @@ For `gh pr create` without an explicit `--title`, check the current branch name 
 
 ---
 
-## Component 6: Subagent (`agents/linear-sync.md`)
+## Component 6: Subagent (`agents/api.md`)
 
 **Model:** claude-haiku-4-5
 **Tools:** mcp\_\_linear, Bash, Read, Write
@@ -332,7 +332,7 @@ Global instructions to append to `~/.claude/CLAUDE.md`. Must cover:
 Bash script. Idempotent. Does:
 
 1. Create directories: `~/.claude/{agents,hooks,scripts}`
-2. Copy `agents/linear-sync.md` to `~/.claude/agents/`
+2. Copy `agents/api.md` to `~/.claude/agents/`
 3. Copy all 4 hook scripts to `~/.claude/hooks/`, `chmod +x` each
 4. Initialize `scripts/linear-repo-links.json` ONLY if it doesn't exist (preserve existing config)
 5. Handle `settings.json`:

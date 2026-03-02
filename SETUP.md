@@ -170,6 +170,6 @@ During setup, pick "This repo doesn't use Linear." All hooks go completely silen
 
 **Want to re-link a repo?** If the repo has a `.claude/linear-sync.json` file, that is the primary config — delete or edit it first. Then delete the repo's entry from `~/.claude/linear-sync/state.json` (if one exists) and restart Claude Code in that repo to re-run the setup wizard.
 
-**Want to uninstall?** Plugin: `claude plugin remove linear-sync`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/linear-sync.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
+**Want to uninstall?** Plugin: `claude plugin remove linear-sync`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
 **Stale branch warnings?** At session start, you'll see warnings for local branches with no commits in 5+ days. This is informational — you can clean them up or ignore. To delete a merged stale branch: `git branch -d <branch-name>`. To force-delete an unmerged branch: `git branch -D <branch-name>`.

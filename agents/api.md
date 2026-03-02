@@ -1,7 +1,7 @@
 ---
-name: linear-sync
-version: 0.1.6
-description: Handles Linear API queries — fetching issue summaries, searching for duplicates, listing assigned issues, and persisting repo/workspace config. Use this agent whenever the CLAUDE.md Linear Sync instructions say to delegate to the linear-sync subagent.
+name: api
+version: 0.1.7
+description: Handles Linear API queries — fetching issue summaries, searching for duplicates, listing assigned issues, and persisting repo/workspace config. Use this agent whenever the CLAUDE.md Linear Sync instructions say to delegate to the linear-sync:api subagent.
 model: haiku
 color: blue
 ---
@@ -39,7 +39,7 @@ The local state file is always needed for **workspace credential routing** (whic
 ### MCP server resolution
 The delegation prompt from the main agent includes the workspace and `mcp_server` name (e.g., `mcp_server: linear-crystalpeak`).
 Use that as the tool prefix: `mcp__<mcp_server>__<tool_name>`.
-Default to `mcp__linear__` if not specified.
+**NEVER default to `mcp__linear__`** if not specified — the wrong server routes to the wrong workspace. If `mcp_server` is missing from the delegation prompt, read the state file at `~/.claude/linear-sync/state.json`, look up the workspace for the current repo, and get the `mcp_server` from the workspace entry. If still missing, report an error rather than guessing.
 
 ### Common operations via MCP
 - **Get issue**: `mcp__<server>__get_issue` — pass the issue identifier (e.g., "PEAK-123")
@@ -180,7 +180,7 @@ Example operations:
 When the main agent asks you to set up a repo:
 
 1. Check workspace cache. Use cached data if fresh. Otherwise fetch and update cache.
-2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `"linear"` in the key name. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. Default to `"linear"` if only one server or no match found.
+2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "crystal-peak" → "linear-crystalpeak"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
 3. Return the list to the main agent as a concise formatted list.
 4. After the main agent tells you what the dev picked:
    a. Verify/create the label.
