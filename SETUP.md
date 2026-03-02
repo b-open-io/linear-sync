@@ -13,14 +13,22 @@
 
 ### Via Plugin (Recommended)
 
+First, add the Crystal Peak marketplace (one-time):
+
 ```bash
-claude plugin add linear-sync@crystal-peak
+claude plugin marketplace add crystal-peak/claude-plugins
+```
+
+Then install the plugin:
+
+```bash
+claude plugin install linear-sync
 ```
 
 To update to the latest version:
 
 ```bash
-claude plugin update linear-sync@crystal-peak
+claude plugin update linear-sync
 ```
 
 That's it. The plugin system handles hook registration, agent loading, and script paths automatically.
@@ -164,12 +172,12 @@ During setup, pick "This repo doesn't use Linear." All hooks go completely silen
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin update linear-sync@crystal-peak` to ensure you have the latest version. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
+**Hooks not firing?** Run `claude plugin update linear-sync` to ensure you have the latest version. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
 
 **"python3 not found"?** Install Python 3 and make sure `python3` is in your PATH.
 
 **Want to re-link a repo?** If the repo has a `.claude/linear-sync.json` file, that is the primary config — delete or edit it first. Then delete the repo's entry from `~/.claude/linear-sync/state.json` (if one exists) and restart Claude Code in that repo to re-run the setup wizard.
 
-**Want to uninstall?** Plugin: `claude plugin remove linear-sync`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
+**Want to uninstall?** Plugin: `claude plugin uninstall linear-sync`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
 **Stale branch warnings?** At session start, you'll see warnings for local branches with no commits in 5+ days. This is informational — you can clean them up or ignore. To delete a merged stale branch: `git branch -d <branch-name>`. To force-delete an unmerged branch: `git branch -D <branch-name>`.

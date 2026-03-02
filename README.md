@@ -4,7 +4,7 @@
 
 A Claude Code plugin that keeps [Linear](https://linear.app) and GitHub in sync. Automatic issue tracking, branch naming, commit enforcement, PR descriptions, GitHub issue sync, and progress updates — all through natural conversation.
 
-Install via `claude plugin add linear-sync@crystal-peak`.
+Install via `claude plugin install linear-sync` (after adding the [Crystal Peak marketplace](https://github.com/crystal-peak/claude-plugins)).
 
 ## How It Works
 
@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph "Subagent"
-        SA["linear-sync subagent<br/>(Haiku model)"]
+        SA["api subagent<br/>(Haiku model)"]
     end
 
     subgraph "External Services"
@@ -82,7 +82,7 @@ sequenceDiagram
     participant CC as Claude Code
     participant SSH as SessionStart Hook
     participant MA as Main Agent
-    participant SA as linear-sync Subagent
+    participant SA as api Subagent
     participant Lin as Linear API
 
     Dev->>CC: Opens session in git repo
@@ -204,7 +204,7 @@ On subsequent syncs, this marker prevents duplicate creation.
 
 ### Subagent Task Map
 
-The `linear-sync` subagent handles all Linear API interactions. The main agent never calls Linear directly — it delegates via the Task tool.
+The `api` subagent handles all Linear API interactions. The main agent delegates via the Agent tool, falling back to `linear-api.sh` for direct mutations.
 
 ```mermaid
 flowchart TD
@@ -274,7 +274,7 @@ flowchart TD
 - On-demand via session menu
 
 ### Context Conservation
-- Main agent never calls Linear API directly
+- Main agent delegates queries to subagent, handles simple mutations via `linear-api.sh`
 - Subagent runs on Haiku for cost efficiency
 - Background mode for non-blocking operations
 - Workspace metadata cached with 24h TTL
@@ -293,14 +293,22 @@ flowchart TD
 
 ### Install via Plugin (Recommended)
 
+First, add the Crystal Peak marketplace (one-time):
+
 ```bash
-claude plugin add linear-sync@crystal-peak
+claude plugin marketplace add crystal-peak/claude-plugins
+```
+
+Then install the plugin:
+
+```bash
+claude plugin install linear-sync
 ```
 
 To update:
 
 ```bash
-claude plugin update linear-sync@crystal-peak
+claude plugin update linear-sync
 ```
 
 The plugin system handles hook registration, agent loading, skill activation, and script paths automatically.
@@ -389,7 +397,7 @@ No project/team/label questions — they come from the committed config.
 linear-sync/                           # Plugin root
 ├── .claude-plugin/plugin.json         # Plugin manifest
 ├── agents/
-│   └── linear-sync.md                 # Subagent definition
+│   └── api.md                         # Subagent definition
 ├── skills/
 │   └── linear-sync/
 │       └── SKILL.md                   # Behavioral instructions (loaded on trigger)
@@ -423,7 +431,7 @@ linear-sync/
 ├── schema/
 │   └── linear-sync.json       # JSON Schema for repo config
 ├── agents/
-│   └── linear-sync.md         # Subagent definition
+│   └── api.md                 # Subagent definition
 ├── hooks/
 │   ├── hooks.json             # Hook registration
 │   └── scripts/
@@ -503,13 +511,13 @@ To opt out after setup, delete the repo entry from `~/.claude/linear-sync/state.
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin update linear-sync@crystal-peak` to ensure the latest version is installed. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
+**Hooks not firing?** Run `claude plugin update linear-sync` to ensure the latest version is installed. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
 
 **"python3 not found"?** Install Python 3 and ensure `python3` is in your PATH.
 
 **Re-link a repo?** Delete `.claude/linear-sync.json` from the repo, remove the repo entry from `~/.claude/linear-sync/state.json`, and restart Claude Code.
 
-**Uninstall (plugin)?** Run `claude plugin remove linear-sync`.
+**Uninstall (plugin)?** Run `claude plugin uninstall linear-sync`.
 
 **Uninstall (standalone)?** Remove hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
