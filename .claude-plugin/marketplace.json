@@ -1,5 +1,5 @@
 {
-  "name": "crystal-peak-linear-sync",
+  "name": "crystal-peak",
   "owner": {
     "name": "crystal-peak"
   },
@@ -14,7 +14,7 @@
         "repo": "crystal-peak/linear-sync"
       },
       "description": "Linear-GitHub sync for Claude Code: issue tracking, commit enforcement, branch naming, and progress updates",
-      "version": "0.0.1-alpha",
+      "version": "0.0.6-alpha",
       "author": {
         "name": "danwag06"
       },

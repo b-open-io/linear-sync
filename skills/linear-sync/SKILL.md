@@ -1,7 +1,6 @@
 ---
 name: linear-sync
 description: Linear issue tracking workflow — manages commits, branches, PRs, issue creation, session kickoff, and setup in Linear-linked repos. Activate for any Linear context, issue references (e.g. ENG-123), or repos with .claude/linear-sync.json.
-version: 0.1.7
 ---
 
 # Linear Sync Workflow

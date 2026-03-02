@@ -1,6 +1,5 @@
 ---
 name: api
-version: 0.1.7
 description: Handles Linear API queries — fetching issue summaries, searching for duplicates, listing assigned issues, and persisting repo/workspace config. Use this agent whenever the CLAUDE.md Linear Sync instructions say to delegate to the linear-sync:api subagent.
 model: haiku
 color: blue
