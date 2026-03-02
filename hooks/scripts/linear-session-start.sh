@@ -274,6 +274,36 @@ else:
   _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   _SCRIPTS_DIR="$(cd "$_HOOK_DIR/../../scripts" 2>/dev/null && pwd)"
 
+  # Self-heal: fetch title from Linear if last_issue exists but title is missing
+  if [ -n "$LAST_ISSUE" ] && [ -z "$LAST_ISSUE_TITLE" ]; then
+    _API_SCRIPT="$_SCRIPTS_DIR/linear-api.sh"
+    if [ -f "$_API_SCRIPT" ]; then
+      LAST_ISSUE_TITLE=$(bash "$_API_SCRIPT" "query { issue(id: \"$LAST_ISSUE\") { title } }" 2>/dev/null | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    print(data['data']['issue']['title'])
+except:
+    print('')
+" 2>/dev/null || echo "")
+      # Persist title back to state file so we don't re-fetch next time
+      if [ -n "$LAST_ISSUE_TITLE" ] && [ -f "$STATE_FILE" ]; then
+        STATE_FILE="$STATE_FILE" REPO_NAME="$REPO_NAME" LAST_ISSUE_TITLE="$LAST_ISSUE_TITLE" python3 -c "
+import json, os
+sf = os.environ['STATE_FILE']
+with open(sf) as f:
+    data = json.load(f)
+repo = data.get('repos', {}).get(os.environ['REPO_NAME'], {})
+repo['last_issue_title'] = os.environ['LAST_ISSUE_TITLE']
+data.setdefault('repos', {})[os.environ['REPO_NAME']] = repo
+with open(sf, 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+" 2>/dev/null || true
+      fi
+    fi
+  fi
+
   # Resolve MCP server name from workspace entry (default: "linear")
   MCP_SERVER=$(STATE_FILE="$STATE_FILE" WS_ID="$WS_ID" python3 -c "
 import json, os
