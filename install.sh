@@ -44,6 +44,9 @@ for hook in linear-session-start.sh linear-prompt-check.sh linear-commit-guard.s
   chmod +x "$CLAUDE_DIR/hooks/$hook"
   echo "  -> ~/.claude/hooks/$hook"
 done
+# Copy Python companion script for session-start hook
+cp "$SCRIPT_DIR/hooks/scripts/linear-session-start.py" "$CLAUDE_DIR/hooks/linear-session-start.py"
+echo "  -> ~/.claude/hooks/linear-session-start.py"
 cp "$SCRIPT_DIR/scripts/linear-api.sh" "$CLAUDE_DIR/scripts/linear-api.sh"
 chmod +x "$CLAUDE_DIR/scripts/linear-api.sh"
 echo "  -> ~/.claude/scripts/linear-api.sh"
