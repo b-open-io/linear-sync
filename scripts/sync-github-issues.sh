@@ -148,7 +148,17 @@ print(nodes[0]['id'] if nodes else '')
     rm -f "$TEAM_TMP" "$PROJECT_TMP" "$LABEL_TMP"
 
     if [ -z "$LABEL_ID" ]; then
-      LABEL_ID=$(bash "$API_SCRIPT" "$MCP_SERVER" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"$LABEL\" }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
+      # Find or create "repo" group label on the team, then create child label under it
+      REPO_GROUP_ID=$(bash "$API_SCRIPT" "$MCP_SERVER" "query { issueLabels(filter: { name: { eq: \"repo\" }, team: { id: { eq: \"$TEAM_ID\" } } }) { nodes { id isGroup } } }" | python3 -c "
+import json, sys
+nodes = json.load(sys.stdin)['data']['issueLabels']['nodes']
+groups = [n for n in nodes if n.get('isGroup')]
+print(groups[0]['id'] if groups else '')
+")
+      if [ -z "$REPO_GROUP_ID" ]; then
+        REPO_GROUP_ID=$(bash "$API_SCRIPT" "$MCP_SERVER" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"repo\", isGroup: true }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
+      fi
+      LABEL_ID=$(bash "$API_SCRIPT" "$MCP_SERVER" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"$LABEL\", parentId: \"$REPO_GROUP_ID\" }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
     fi
 
     # Create Linear issues in parallel (up to 5 concurrent)

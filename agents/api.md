@@ -76,10 +76,14 @@ bash "$API_SCRIPT" "$MCP_SERVER" 'query { teams { nodes { id name key } } }'
 bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "ENG-123") { id title state { id name } assignee { name } } }'
 
 # Search labels
-bash "$API_SCRIPT" "$MCP_SERVER" 'query { issueLabels(filter: { name: { eq: "repo:api" } }) { nodes { id name } } }'
+bash "$API_SCRIPT" "$MCP_SERVER" 'query { issueLabels(filter: { name: { eq: "repo:api" } }) { nodes { id name parent { id name } } } }'
 
-# Create label
-bash "$API_SCRIPT" "$MCP_SERVER" 'mutation { issueLabelCreate(input: { teamId: "TEAM_ID", name: "repo:api" }) { issueLabel { id name } } }'
+# Find or create "repo" group label, then create child label under it
+bash "$API_SCRIPT" "$MCP_SERVER" 'query { issueLabels(filter: { name: { eq: "repo" } }) { nodes { id name isGroup team { id } } } }'
+# If no "repo" group exists for the team, create it:
+bash "$API_SCRIPT" "$MCP_SERVER" 'mutation { issueLabelCreate(input: { teamId: "TEAM_ID", name: "repo", isGroup: true }) { issueLabel { id } } }'
+# Then create the child label with parentId:
+bash "$API_SCRIPT" "$MCP_SERVER" 'mutation { issueLabelCreate(input: { teamId: "TEAM_ID", name: "repo:api", parentId: "REPO_GROUP_ID" }) { issueLabel { id name } } }'
 ```
 
 ### Multi-workspace
@@ -151,7 +155,7 @@ Example operations:
 1. **Always read the state file before writing.** Merge your changes; never overwrite the whole file blindly.
 2. **Use Read/Write tools for state file updates.** Never use `python3` one-liners or Bash for JSON file manipulation — use the Read and Write tools to avoid permission prompts.
 3. **Return concise summaries.** The main agent needs actionable one-liners, not raw API payloads. Keep responses to 1-3 lines.
-4. **Auto-provision labels.** Before applying any label, search for it in the workspace. If it does not exist, create it first, then apply it.
+4. **Auto-provision labels.** Before applying any label, search for it in the workspace. If it does not exist, create it under the appropriate group label. For `repo:*` labels: first find or create a "repo" group label (`isGroup: true`) on the team, then create the child label with `parentId` pointing to the group. This keeps repo labels nested in the Linear UI instead of cluttering the flat label list.
 5. **Use the correct workspace server name.** Pass the `mcp_server` name from the delegation prompt as the first argument to `linear-api.sh`. For multi-workspace setups, each workspace maps to a different server name.
 6. **Never ask the user questions directly.** Return data to the main agent so it can use AskUserQuestion to present choices.
 
