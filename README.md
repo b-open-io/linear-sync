@@ -293,28 +293,26 @@ flowchart TD
 
 ### Install via Plugin (Recommended)
 
-First, add the Crystal Peak marketplace (one-time):
+Add the Crystal Peak marketplace (one-time):
 
 ```bash
 claude plugin marketplace add crystal-peak/claude-plugins
 ```
 
-Then install the plugin:
+Install the plugin:
 
 ```bash
-claude plugin install linear-sync
+claude plugin install linear-sync@crystal-peak
 ```
 
-To update to the latest version:
+Update to the latest version:
 
 ```bash
-claude plugin marketplace update crystal-peak   # pull latest registry
-claude plugin update linear-sync                 # update the plugin
+claude plugin marketplace update crystal-peak       # pull latest registry
+claude plugin update linear-sync@crystal-peak        # update the plugin
 ```
 
-Then restart Claude Code for the changes to take effect.
-
-> **Tip:** If you see "Plugin not found" on update, make sure the marketplace is updated first. The format is `linear-sync@crystal-peak` if you need to specify the marketplace explicitly, but `linear-sync` alone works when there's no ambiguity.
+Restart Claude Code after installing or updating for changes to take effect.
 
 The plugin system handles hook registration, agent loading, skill activation, and script paths automatically.
 
@@ -516,13 +514,13 @@ To opt out after setup, delete the repo entry from `~/.claude/linear-sync/state.
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync` then restart Claude Code. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
+**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync@crystal-peak` then restart Claude Code. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
 
 **"python3 not found"?** Install Python 3 and ensure `python3` is in your PATH.
 
 **Re-link a repo?** Delete `.claude/linear-sync.json` from the repo, remove the repo entry from `~/.claude/linear-sync/state.json`, and restart Claude Code.
 
-**Uninstall (plugin)?** Run `claude plugin uninstall linear-sync`.
+**Uninstall (plugin)?** Run `claude plugin uninstall linear-sync@crystal-peak`.
 
 **Uninstall (standalone)?** Remove hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
