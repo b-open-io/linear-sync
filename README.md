@@ -305,11 +305,16 @@ Then install the plugin:
 claude plugin install linear-sync
 ```
 
-To update:
+To update to the latest version:
 
 ```bash
-claude plugin update linear-sync
+claude plugin marketplace update crystal-peak   # pull latest registry
+claude plugin update linear-sync                 # update the plugin
 ```
+
+Then restart Claude Code for the changes to take effect.
+
+> **Tip:** If you see "Plugin not found" on update, make sure the marketplace is updated first. The format is `linear-sync@crystal-peak` if you need to specify the marketplace explicitly, but `linear-sync` alone works when there's no ambiguity.
 
 The plugin system handles hook registration, agent loading, skill activation, and script paths automatically.
 
@@ -511,7 +516,7 @@ To opt out after setup, delete the repo entry from `~/.claude/linear-sync/state.
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin update linear-sync` to ensure the latest version is installed. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
+**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync` then restart Claude Code. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
 
 **"python3 not found"?** Install Python 3 and ensure `python3` is in your PATH.
 

@@ -28,8 +28,13 @@ claude plugin install linear-sync
 To update to the latest version:
 
 ```bash
-claude plugin update linear-sync
+claude plugin marketplace update crystal-peak   # pull latest registry
+claude plugin update linear-sync                 # update the plugin
 ```
+
+Then restart Claude Code for the changes to take effect.
+
+> **Tip:** The update command uses the format `linear-sync` (plugin name only). If you need to specify the marketplace explicitly (e.g., multiple marketplaces have a plugin with the same name), use `linear-sync@crystal-peak`.
 
 That's it. The plugin system handles hook registration, agent loading, and script paths automatically.
 
@@ -172,7 +177,7 @@ During setup, pick "This repo doesn't use Linear." All hooks go completely silen
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin update linear-sync` to ensure you have the latest version. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
+**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync` then restart Claude Code. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
 
 **"python3 not found"?** Install Python 3 and make sure `python3` is in your PATH.
 
