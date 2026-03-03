@@ -12,19 +12,32 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""')
 
 HOME_DIR="$HOME"
+ALLOW='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
 
-# Read/Write: auto-approve state file operations
+# Read/Write/Edit: auto-approve state file operations (~/.claude/linear-sync/*)
 if [[ "$FILE_PATH" == "$HOME_DIR/.claude/linear-sync/"* ]] || [[ "$FILE_PATH" == "~/.claude/linear-sync/"* ]]; then
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
+  printf '%s\n' "$ALLOW"
+  exit 0
+fi
+
+# Read/Write/Edit: auto-approve repo config (.claude/linear-sync.json)
+if [[ "$FILE_PATH" == *"/.claude/linear-sync.json" ]]; then
+  printf '%s\n' "$ALLOW"
   exit 0
 fi
 
 # Read only: auto-approve reading plugin scripts (for self-debugging)
 if [[ "$TOOL_NAME" == "Read" ]]; then
   if [[ "$FILE_PATH" == "$HOME_DIR/.claude/plugins/cache/crystal-peak/linear-sync/"* ]] || [[ "$FILE_PATH" == "~/.claude/plugins/cache/crystal-peak/linear-sync/"* ]]; then
-    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
+    printf '%s\n' "$ALLOW"
     exit 0
   fi
+fi
+
+# Read only: auto-approve reading MCP config (for workspace resolution)
+if [[ "$TOOL_NAME" == "Read" ]] && [[ "$FILE_PATH" == "$HOME_DIR/.claude/mcp.json" ]]; then
+  printf '%s\n' "$ALLOW"
+  exit 0
 fi
 
 exit 0

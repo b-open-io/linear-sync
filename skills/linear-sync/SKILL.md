@@ -34,9 +34,9 @@ When the hook injects config context for a linked repo:
 If the hook context includes `last_issue: <ISSUE_ID>`, offer to resume that issue first:
 
 Use AskUserQuestion: "What are you working on today in <repo>?"
-1. **"Resume <ISSUE_ID>: <title>"** (use the title from hook context if available, e.g. "Resume PEAK-153: modernize plugin to use native Linear MCP tools") — Delegate to `linear-sync:api` subagent **(background)** to fetch the issue summary. After fetching, save `last_issue` and `last_issue_title` for this repo (direct Read/Write — see Execution Model). Check for blockers in the response and warn if any.
-2. **"Work on a different issue"** — Delegate to `linear-sync:api` subagent **(background)** to fetch the dev's assigned in-progress issues ("Fetch My Issues" task). Present the returned list as AskUserQuestion choices, plus an option to "Enter an issue ID manually". After selection, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
-3. **"Start something new"** — Ask for a one-line description via AskUserQuestion. Check for duplicates first (see Duplicate Detection below). Then delegate to `linear-sync:api` subagent (foreground) to create a ticket in the correct project with the repo label. After creation, offer to assign to current cycle (see Cycle Assignment below). Use the returned issue ID going forward.
+1. **"Resume <ISSUE_ID>: <title>"** (use the title from hook context if available, e.g. "Resume PEAK-153: modernize plugin to use native Linear MCP tools") — Delegate to `linear-sync:api` subagent **(background)** to fetch the issue summary. **Include `mcp_server` and `scripts_dir` from hook context in the delegation prompt** (see Execution Model). After fetching, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
+2. **"Work on a different issue"** — Delegate to `linear-sync:api` subagent **(background)** to fetch the dev's assigned in-progress issues ("Fetch My Issues" task). **Include `mcp_server` and `scripts_dir` from hook context.** Present the returned list as AskUserQuestion choices, plus an option to "Enter an issue ID manually". After selection, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
+3. **"Start something new"** — Ask for a one-line description via AskUserQuestion. Check for duplicates first (see Duplicate Detection below). Then delegate to `linear-sync:api` subagent (foreground) to create a ticket in the correct project with the repo label. **Include `mcp_server` and `scripts_dir` from hook context.** After creation, offer to assign to current cycle (see Cycle Assignment below). Use the returned issue ID going forward.
 4. **"Just exploring / no ticket needed"** — Proceed normally. The commit guard hook will catch untagged commits later and you can offer to create a ticket at that point.
 
 If no `last_issue` is present, skip option 1 and start with options 2-4 (renumber accordingly).
@@ -51,7 +51,7 @@ When a `[LINEAR-SETUP]` directive is injected:
 
 1. **Always use AskUserQuestion** for every choice. The dev never types workspace names, project IDs, or labels manually.
 2. **Always offer "This repo doesn't use Linear"** as an option. If chosen, opt the repo out via Read/Write tools (read state file, set `workspace: "none"`, write back) and move on.
-3. Use the `linear-sync:api` subagent in **foreground** mode to fetch real data from Linear MCP (workspaces, teams, projects, labels).
+3. Use the `linear-sync:api` subagent in **foreground** mode to fetch real data from Linear MCP (workspaces, teams, projects, labels). **Include `mcp_server` and `scripts_dir` from hook context** (or from state file if setting up a new workspace).
 4. Present fetched data as AskUserQuestion choices.
 5. For labels, suggest `repo:<repo-name>` as the default.
 6. Detect the GitHub org from the repo's remote URL. Include it as `github_org` in the committed config.
@@ -145,7 +145,7 @@ When a commit, branch, or PR is blocked by the hook for missing an issue ID:
 
 1. **Proactively offer to create a Linear ticket.** Do not just report the error.
 2. Use AskUserQuestion to ask for a one-line description of the work.
-3. Delegate to `linear-sync:api` subagent (foreground) to create the ticket.
+3. Delegate to `linear-sync:api` subagent (foreground) to create the ticket. **Include `mcp_server` and `scripts_dir` from hook context.**
 4. Retry the original command with the new issue ID inserted.
 5. Do not make the dev start over or re-type their commit message.
 
@@ -153,7 +153,7 @@ When a commit, branch, or PR is blocked by the hook for missing an issue ID:
 
 Before creating any new issue:
 
-1. Delegate to `linear-sync:api` subagent **(background)** with the "Search Issues" task.
+1. Delegate to `linear-sync:api` subagent **(background)** with the "Search Issues" task. **Include `mcp_server` and `scripts_dir` from hook context.**
 2. If duplicates found, present them via AskUserQuestion with option to use existing or create anyway.
 3. If no duplicates, proceed with creation normally.
 
@@ -187,7 +187,7 @@ When `gh pr create` is about to run and you have issue context:
 ## Cycle/Sprint Auto-Assignment
 
 When creating a new issue:
-1. After creation, delegate to `linear-sync:api` subagent **(foreground)** to fetch the active cycle for the team.
+1. After creation, delegate to `linear-sync:api` subagent **(foreground)** to fetch the active cycle for the team. **Include `mcp_server` and `scripts_dir` from hook context.**
 2. If an active cycle exists, use AskUserQuestion to offer adding the issue to it.
 3. If no active cycle, skip silently.
 4. To add: use direct MCP call (`mcp__<server>__update_issue` with `cycleId`) — no subagent needed.
@@ -218,6 +218,8 @@ If the session-start digest mentions closed issues without linked PRs, surface i
 If a `.linear-sync-template.json` exists in the repo root and the hook injects `[LINEAR-TEMPLATE]`, use its values as defaults during the setup wizard. Present them for confirmation: "Found a team config template. Use these defaults? Workspace: X, Project: Y, Team: Z, Label: W". The dev can override any value.
 
 ## Execution Model
+
+> **CRITICAL — Workspace isolation**: Every subagent delegation and every direct MCP call MUST use the correct workspace's MCP server. The session-start hook injects `mcp_server` and `scripts_dir` in its context — these MUST be forwarded to the subagent in every delegation prompt. Using the wrong server routes operations to the wrong Linear workspace. Never omit, never default.
 
 Operations use five tiers to minimize context consumption and maximize performance:
 

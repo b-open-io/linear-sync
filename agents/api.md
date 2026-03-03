@@ -36,9 +36,14 @@ The local state file is always needed for **workspace credential routing** (whic
 **Prefer MCP tools** for all Linear operations. Use `linear-api.sh` only as fallback.
 
 ### MCP server resolution
-The delegation prompt from the main agent includes the workspace and `mcp_server` name (e.g., `mcp_server: linear-crystalpeak`).
+The delegation prompt from the main agent **must** include `mcp_server` (e.g., `mcp_server: linear-crystalpeak`).
 Use that as the tool prefix: `mcp__<mcp_server>__<tool_name>`.
-**NEVER default to `mcp__linear__`** if not specified — the wrong server routes to the wrong workspace. If `mcp_server` is missing from the delegation prompt, read the state file at `~/.claude/linear-sync/state.json`, look up the workspace for the current repo, and get the `mcp_server` from the workspace entry. If still missing, report an error rather than guessing.
+
+**NEVER default to `mcp__linear__`** — the wrong server routes to the wrong workspace. If `mcp_server` is missing from the delegation prompt:
+1. Read the state file at `~/.claude/linear-sync/state.json`.
+2. Determine the current repo name from the working directory (`basename` of git root).
+3. Look up `repos.<repo>.workspace`, then look up `workspaces.<workspace>.mcp_server`.
+4. If the server **still** cannot be resolved, **return an error** — never guess or assume "linear".
 
 ### Common operations via MCP
 - **Get issue**: `mcp__<server>__get_issue` — pass the issue identifier (e.g., "PEAK-123")

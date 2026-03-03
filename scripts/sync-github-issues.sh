@@ -36,15 +36,27 @@ LABEL=$(echo "$CONFIG" | sed -n '4p')
 GITHUB_ORG=$(echo "$CONFIG" | sed -n '5p')
 REPO_NAME=$(basename "$REPO_ROOT")
 
-# Fall back to state file for github_org if not in repo config
-if [ -z "$GITHUB_ORG" ] && [ -f "$STATE_FILE" ]; then
-  GITHUB_ORG=$(STATE_FILE="$STATE_FILE" WORKSPACE="$WORKSPACE" python3 -c "
+# Resolve MCP server name and github_org from state file
+MCP_SERVER=""
+if [ -f "$STATE_FILE" ] && [ -n "$WORKSPACE" ]; then
+  RESOLVED=$(STATE_FILE="$STATE_FILE" WORKSPACE="$WORKSPACE" python3 -c "
 import json, os
 with open(os.environ['STATE_FILE']) as f:
     data = json.load(f)
 ws = data.get('workspaces', {}).get(os.environ['WORKSPACE'], {})
+print(ws.get('mcp_server', ''))
 print(ws.get('github_org', ''))
-")
+" 2>/dev/null || echo "")
+  MCP_SERVER=$(echo "$RESOLVED" | sed -n '1p')
+  STATE_GITHUB_ORG=$(echo "$RESOLVED" | sed -n '2p')
+  if [ -z "$GITHUB_ORG" ]; then
+    GITHUB_ORG="$STATE_GITHUB_ORG"
+  fi
+fi
+
+if [ -z "$MCP_SERVER" ]; then
+  echo '{"error": "Could not resolve MCP server for workspace: '"$WORKSPACE"'"}'
+  exit 1
 fi
 
 if [ -z "$GITHUB_ORG" ] || [ -z "$PROJECT" ] || [ -z "$TEAM" ] || [ -z "$LABEL" ]; then
@@ -63,7 +75,7 @@ LINEAR_TMP=$(mktemp)
 gh issue list --repo "$FULL_REPO" --state open --json number,title,body,url --limit 500 >"$GH_TMP" 2>/dev/null &
 PID_GH=$!
 
-bash "$API_SCRIPT" "query {
+bash "$API_SCRIPT" "$MCP_SERVER" "query {
   issues(filter: {
     project: { name: { eq: \"$PROJECT\" } },
     labels: { some: { name: { eq: \"$LABEL\" } } }
@@ -117,11 +129,11 @@ print(json.dumps(unsynced))
     # Fetch team, project, and label IDs in parallel
     TEAM_TMP=$(mktemp); PROJECT_TMP=$(mktemp); LABEL_TMP=$(mktemp)
 
-    bash "$API_SCRIPT" "query { teams(filter: { key: { eq: \"$TEAM\" } }) { nodes { id } } }" >"$TEAM_TMP" &
+    bash "$API_SCRIPT" "$MCP_SERVER" "query { teams(filter: { key: { eq: \"$TEAM\" } }) { nodes { id } } }" >"$TEAM_TMP" &
     PID_TEAM=$!
-    bash "$API_SCRIPT" "query { projects(filter: { name: { eq: \"$PROJECT\" } }) { nodes { id } } }" >"$PROJECT_TMP" &
+    bash "$API_SCRIPT" "$MCP_SERVER" "query { projects(filter: { name: { eq: \"$PROJECT\" } }) { nodes { id } } }" >"$PROJECT_TMP" &
     PID_PROJECT=$!
-    bash "$API_SCRIPT" "query { issueLabels(filter: { name: { eq: \"$LABEL\" } }) { nodes { id } } }" >"$LABEL_TMP" &
+    bash "$API_SCRIPT" "$MCP_SERVER" "query { issueLabels(filter: { name: { eq: \"$LABEL\" } }) { nodes { id } } }" >"$LABEL_TMP" &
     PID_LABEL=$!
 
     wait "$PID_TEAM" "$PID_PROJECT" "$PID_LABEL"
@@ -136,7 +148,7 @@ print(nodes[0]['id'] if nodes else '')
     rm -f "$TEAM_TMP" "$PROJECT_TMP" "$LABEL_TMP"
 
     if [ -z "$LABEL_ID" ]; then
-      LABEL_ID=$(bash "$API_SCRIPT" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"$LABEL\" }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
+      LABEL_ID=$(bash "$API_SCRIPT" "$MCP_SERVER" "mutation { issueLabelCreate(input: { teamId: \"$TEAM_ID\", name: \"$LABEL\" }) { issueLabel { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['issueLabelCreate']['issueLabel']['id'])")
     fi
 
     # Create Linear issues in parallel (up to 5 concurrent)
@@ -178,7 +190,7 @@ print(json.dumps({'input': {
 }}))
 ")
 
-        RESULT=$(bash "$API_SCRIPT" \
+        RESULT=$(bash "$API_SCRIPT" "$MCP_SERVER" \
           'mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { identifier title } } }' \
           "$VARS" 2>&1)
 
