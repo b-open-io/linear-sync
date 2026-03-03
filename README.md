@@ -4,7 +4,7 @@
 
 A Claude Code plugin that keeps [Linear](https://linear.app) and GitHub in sync. Automatic issue tracking, branch naming, commit enforcement, PR descriptions, GitHub issue sync, and progress updates — all through natural conversation.
 
-Install via `claude plugin install linear-sync` (after adding the [Crystal Peak marketplace](https://github.com/crystal-peak/claude-plugins)).
+Install via `claude plugin install linear-sync@crystal-peak` (after adding the [Crystal Peak marketplace](https://github.com/crystal-peak/claude-plugins)).
 
 ## How It Works
 
@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph "Subagent"
-        SA["api subagent<br/>(Haiku model)"]
+        SA["api subagent<br/>(Sonnet model)"]
     end
 
     subgraph "External Services"
@@ -204,7 +204,7 @@ On subsequent syncs, this marker prevents duplicate creation.
 
 ### Subagent Task Map
 
-The `api` subagent handles all Linear API interactions. The main agent delegates via the Agent tool, falling back to `linear-api.sh` for direct mutations.
+The `api` subagent handles Linear API queries via `linear-api.sh`. The main agent handles simple mutations directly via MCP tools.
 
 ```mermaid
 flowchart TD
@@ -274,8 +274,8 @@ flowchart TD
 - On-demand via session menu
 
 ### Context Conservation
-- Main agent delegates queries to subagent, handles simple mutations via `linear-api.sh`
-- Subagent runs on Haiku for cost efficiency
+- Main agent delegates queries to subagent via `linear-api.sh`, handles simple mutations via direct MCP calls
+- Subagent runs on Sonnet for reliable instruction-following
 - Background mode for non-blocking operations
 - Workspace metadata cached with 24h TTL
 - Hooks inject minimal context strings, not raw API data
