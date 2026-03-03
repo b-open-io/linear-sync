@@ -33,7 +33,7 @@ The local state file is always needed for **workspace credential routing** (whic
 
 ## Linear API Access
 
-**Prefer MCP tools** for all Linear operations. Use `linear-api.sh` only as fallback.
+**Prefer MCP tools** for all Linear operations. Use `linear-api.sh` only as fallback. **NEVER use raw `curl` calls** — always use MCP tools or `linear-api.sh` which handle authentication and auto-approval automatically.
 
 ### MCP server resolution
 The delegation prompt from the main agent **must** include `mcp_server` (e.g., `mcp_server: linear-crystalpeak`).

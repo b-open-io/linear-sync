@@ -12,6 +12,17 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
 [[ -z "$COMMAND" ]] && exit 0
 
+# Quick check: curl to Linear API (safety net — subagent should use MCP tools or linear-api.sh)
+# Handles multiline curl with \ continuations and optional | jq pipe
+if echo "$COMMAND" | grep -qE 'curl\s.*https://api\.linear\.app/graphql'; then
+  # Strip optional | jq ... at the end, then reject if other chaining operators remain
+  CLEANED=$(echo "$COMMAND" | sed -E 's/\|[[:space:]]*jq[[:space:]].*$//')
+  if ! echo "$CLEANED" | grep -qE '&&|\|\||;'; then
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
+    exit 0
+  fi
+fi
+
 # Check every line: each must be either a variable assignment, a bash linear-api.sh call,
 # a heredoc body, or a safe shell builtin.
 # Anything else (chained commands, pipes, subshells) fails the check.
