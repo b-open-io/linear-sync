@@ -552,6 +552,33 @@ else
 fi
 
 # ==========================================================================
+section "API Allow: Multiline Single-Quoted Query"
+
+# This is the exact pattern the subagent generates — GraphQL query spans multiple lines
+CMD=$(printf "bash /path/to/scripts/linear-api.sh linear-crystalpeak 'query {\n  issues(filter: {\n    project: { name: { eq: \"Dan Test\" } }\n    state: { type: { in: [\"unstarted\", \"started\"] } }\n  }, first: 50) {\n    nodes { id identifier title }\n  }\n}'")
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "multiline single-quoted GraphQL query is allowed"
+else
+  fail "multiline single-quoted GraphQL query should be allowed" "$OUTPUT"
+fi
+
+# cd && bash with multiline query
+CMD=$(printf "cd /path/to/plugin && bash scripts/linear-api.sh linear-crystalpeak 'query {\n  viewer { id name }\n}'")
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "cd && bash with multiline query is allowed"
+else
+  fail "cd && bash with multiline query should be allowed" "$OUTPUT"
+fi
+
+# ==========================================================================
 section "API Allow: find in .claude Paths"
 
 CMD=$(printf 'find ~/.claude/linear-sync -name "*.json"\nbash /path/to/scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\''')

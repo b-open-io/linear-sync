@@ -18,6 +18,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 ALL_SAFE=true
 HAS_API_CALL=false
 HEREDOC_DELIM=""
+IN_API_MULTILINE=false
 
 while IFS= read -r line; do
   # Skip empty lines
@@ -31,12 +32,26 @@ while IFS= read -r line; do
     continue
   fi
 
+  # If inside a multiline single-quoted string from a bash linear-api.sh call,
+  # skip lines until the closing single quote (e.g., the end of a GraphQL query)
+  if $IN_API_MULTILINE; then
+    if [[ "$line" == *"'"* ]]; then
+      IN_API_MULTILINE=false
+    fi
+    continue
+  fi
+
   # bash linear-api.sh call (with or without quoted path, with or without env-var prefix)
   # Must check BEFORE variable assignment since VAR=val bash ... looks like an assignment
   # Reject if the line contains chaining operators (&&, ||, ;, |) AFTER the bash call
   if echo "$line" | grep -qE '^\s*(([A-Za-z_][A-Za-z_0-9]*="?[^"]*"?\s+)*)?bash\s+"?[^"]*linear-api\.sh"?(\s|$)'; then
     if ! echo "$line" | grep -qE '&&|\|\||;|\|'; then
       HAS_API_CALL=true
+      # Check for multiline single-quoted argument (odd number of single quotes = unclosed)
+      QUOTE_COUNT=$(echo "$line" | tr -cd "'" | wc -c)
+      if (( QUOTE_COUNT % 2 != 0 )); then
+        IN_API_MULTILINE=true
+      fi
       continue
     fi
   fi
@@ -62,6 +77,11 @@ while IFS= read -r line; do
     # Check if it's cd && bash linear-api.sh (API call pattern)
     if echo "$line" | grep -qE '^\s*cd\s+\S+\s*&&\s*bash\s+"?[^"]*linear-api\.sh"?(\s|$)'; then
       HAS_API_CALL=true
+      # Check for multiline single-quoted argument
+      QUOTE_COUNT=$(echo "$line" | tr -cd "'" | wc -c)
+      if (( QUOTE_COUNT % 2 != 0 )); then
+        IN_API_MULTILINE=true
+      fi
       continue
     fi
     # Plain cd (no chaining) is safe
