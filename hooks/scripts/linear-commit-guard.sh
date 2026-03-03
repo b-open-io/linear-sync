@@ -37,6 +37,190 @@ if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
+# ---------- auto-approve safe operations ----------
+# Python-based check: auto-approve read-only git, safe non-git, and routine
+# mutations in linked repos. Handles chained commands (&&/||/;/|) by validating
+# each part independently. This runs BEFORE the issue-ID enforcement below.
+AUTO_APPROVE_RESULT=$(COMMAND="$COMMAND" python3 -c "
+import os, re, sys
+
+cmd = os.environ['COMMAND'].strip()
+
+# Commands that are ALWAYS safe (no repo check needed)
+SAFE_GIT_READONLY = {
+    'log', 'status', 'diff', 'show', 'rev-parse', 'remote', 'for-each-ref',
+    'describe', 'reflog', 'shortlog', 'ls-files', 'cat-file', 'fetch',
+}
+
+# Branch listing flags (safe): bare 'branch', -v, -vv, -a, -r, --list, --show-current, --contains, --merged
+BRANCH_LIST_FLAGS = {'-v', '-vv', '-a', '-r', '--list', '--show-current', '--contains', '--merged', '--no-merged', '--sort'}
+
+# Destructive ops — never auto-approve
+DESTRUCTIVE_PATTERNS = [
+    r'\bgit\s+reset\s+--hard\b',
+    r'\bgit\s+checkout\s+--\s',
+    r'\bgit\s+clean\s+-[a-zA-Z]*f',
+    r'\bgit\s+branch\s+-[a-zA-Z]*[dD]\b',
+    r'\bgit\s+tag\s+-[a-zA-Z]*[dfa]\b',
+]
+
+def is_safe_universal(part):
+    \"\"\"Check if a single command part is universally safe (no repo check needed).\"\"\"
+    p = part.strip()
+    if not p:
+        return True
+
+    # Safe non-git: ls
+    if re.match(r'^ls(\s|$)', p):
+        return True
+
+    # Safe non-git: find in .claude paths
+    if re.match(r'^find\s', p):
+        # Only safe if searching in .claude or linear-sync paths
+        if re.search(r'\.claude|linear-sync|linear_sync', p):
+            return True
+        return False
+
+    # Must be a git command for remaining checks
+    m = re.match(r'^git\s+(\S+)', p)
+    if not m:
+        return False
+    subcmd = m.group(1)
+
+    # Check for destructive patterns first
+    for pattern in DESTRUCTIVE_PATTERNS:
+        if re.search(pattern, p):
+            return False
+
+    # Read-only git subcommands
+    if subcmd in SAFE_GIT_READONLY:
+        return True
+
+    # git branch (listing only — no creation, no delete)
+    if subcmd == 'branch':
+        # Extract args after 'git branch'
+        args_str = re.sub(r'^git\s+branch\s*', '', p).strip()
+        if not args_str:
+            return True  # bare 'git branch'
+        # Split into tokens
+        tokens = args_str.split()
+        for tok in tokens:
+            if tok.startswith('-'):
+                # Check if it's a safe listing flag
+                if tok in BRANCH_LIST_FLAGS:
+                    continue
+                # --sort=... is safe
+                if tok.startswith('--sort='):
+                    continue
+                # -m/-M is NOT safe here (handled separately in repo check)
+                return False
+            # Non-flag argument after safe flags is OK (e.g., 'git branch -v main')
+        return True
+
+    # git tag (listing only)
+    if subcmd == 'tag':
+        args_str = re.sub(r'^git\s+tag\s*', '', p).strip()
+        if not args_str:
+            return True
+        # tag -l/--list is safe
+        tokens = args_str.split()
+        for tok in tokens:
+            if tok.startswith('-'):
+                if tok in ('-l', '--list', '-n', '--sort'):
+                    continue
+                if tok.startswith('--sort=') or tok.startswith('-n'):
+                    continue
+                return False
+        return True
+
+    return False
+
+def is_safe_linked_repo(part):
+    \"\"\"Check if a single command part is safe in a linked repo (routine mutations).\"\"\"
+    p = part.strip()
+    if not p:
+        return True
+
+    m = re.match(r'^git\s+(\S+)', p)
+    if not m:
+        return False
+    subcmd = m.group(1)
+
+    # git add, git stash, git pull
+    if subcmd in ('add', 'stash', 'pull'):
+        return True
+
+    return False
+
+def is_branch_rename(part):
+    \"\"\"Check if this is a git branch -m/-M rename.\"\"\"
+    p = part.strip()
+    return bool(re.search(r'\bgit\s+branch\s+-[mM]\b', p))
+
+def get_branch_rename_target(part):
+    \"\"\"Extract the new branch name from git branch -m/-M.\"\"\"
+    p = part.strip()
+    m = re.search(r'\bgit\s+branch\s+-[mM]\s+(?:\S+\s+)?(\S+)', p)
+    return m.group(1) if m else ''
+
+# Split chained commands
+parts = re.split(r'\s*(?:&&|\|\||;|\|)\s*', cmd)
+
+# Check if ANY part is destructive
+for part in parts:
+    for pattern in DESTRUCTIVE_PATTERNS:
+        if re.search(pattern, part):
+            print('PASS')  # let existing logic handle it
+            sys.exit(0)
+
+# Check if ALL parts are universally safe
+all_universal = all(is_safe_universal(p) for p in parts)
+if all_universal:
+    print('APPROVE_UNIVERSAL')
+    sys.exit(0)
+
+# Check for branch rename (needs special handling)
+has_rename = any(is_branch_rename(p) for p in parts)
+if has_rename:
+    # Extract target branch name and check for issue ID
+    for p in parts:
+        if is_branch_rename(p):
+            target = get_branch_rename_target(p)
+            if target and re.search(r'[A-Z]{2,5}-[0-9]+', target):
+                print('APPROVE_RENAME')
+            else:
+                print('BLOCK_RENAME')
+            sys.exit(0)
+
+# Check if all parts are safe (universal OR linked-repo safe)
+all_safe = all(is_safe_universal(p) or is_safe_linked_repo(p) for p in parts)
+if all_safe:
+    print('APPROVE_LINKED')
+    sys.exit(0)
+
+print('PASS')
+" 2>/dev/null || echo "PASS")
+
+case "$AUTO_APPROVE_RESULT" in
+  APPROVE_UNIVERSAL)
+    # Safe read-only operations — approve without repo check
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
+    exit 0
+    ;;
+  APPROVE_RENAME|APPROVE_LINKED)
+    # These need a linked repo — fall through to repo check, then approve
+    ;;
+  BLOCK_RENAME)
+    # Branch rename without issue ID — need repo check first, then block
+    ;;
+  *)
+    # PASS — fall through to existing CMD_TYPE logic
+    ;;
+esac
+
+# For APPROVE_LINKED/APPROVE_RENAME/BLOCK_RENAME, we need the repo check.
+# If the result is one of these, we'll handle it after the repo check below.
+
 # ---------- determine command type ----------
 CMD_TYPE=""
 EXTRACTED=""
@@ -201,7 +385,14 @@ sys.exit(1)
 fi
 
 if [ -z "$CMD_TYPE" ]; then
-  exit 0
+  # If auto-approve needs a repo check, don't exit yet — fall through
+  case "$AUTO_APPROVE_RESULT" in
+    APPROVE_LINKED|APPROVE_RENAME|BLOCK_RENAME)
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
 fi
 
 # ---------- check repo status ----------
@@ -284,6 +475,19 @@ case "$REPO_INFO" in
 esac
 
 TEAM_PREFIX="${REPO_INFO#LINKED:}"
+
+# ---------- handle auto-approved operations that needed repo check ----------
+case "$AUTO_APPROVE_RESULT" in
+  APPROVE_LINKED|APPROVE_RENAME)
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
+    exit 0
+    ;;
+  BLOCK_RENAME)
+    echo "BLOCKED: Branch rename must include an issue ID in the new name (e.g. ${TEAM_PREFIX}-123-my-feature)." >&2
+    echo "Tip: Ask Claude to create a Linear ticket if you don't have one yet." >&2
+    exit 2
+    ;;
+esac
 
 # ---------- allow --amend --no-edit ----------
 if [ "$CMD_TYPE" = "amend_no_edit" ]; then

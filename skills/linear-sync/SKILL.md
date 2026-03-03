@@ -250,7 +250,7 @@ For operations where the main agent blocks on the result:
 - **Fetch Active Cycle** — need info for cycle assignment AskUserQuestion
 
 ### Tier 4: Bash `linear-api.sh` (fallback only)
-For operations MCP tools can't handle, or for hook scripts running outside agent context. The `linear-api-allow.sh` PreToolUse hook auto-approves these calls.
+For operations MCP tools can't handle, or for hook scripts running outside agent context. The `linear-api-allow.sh` PreToolUse hook auto-approves these calls. The script auto-detects the workspace MCP server from `.claude/linear-sync.json` + state file when no server name is passed — but always pass the server name explicitly when you have it.
 
 **Fallback notes:** The Bash tool escapes `!` to `\!` even inside single quotes, breaking GraphQL non-null types like `CommentCreateInput!`. If you must use `linear-api.sh`, use printf on a separate line to construct queries containing `!`:
 ```

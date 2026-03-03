@@ -61,7 +61,7 @@ Use that as the tool prefix: `mcp__<mcp_server>__<tool_name>`.
 
 Use `linear-api.sh` when MCP tools are unavailable or can't handle the operation. The script reads API keys from `~/.claude/mcp.json` internally. **NEVER set environment variables like `LINEAR_API_KEY=...` before the bash call** — the script handles authentication itself. Prefixing env vars breaks the auto-approve hook and is unnecessary.
 
-**CRITICAL: Always pass the MCP server name as the first argument.** Omitting it defaults to the wrong workspace.
+**CRITICAL: Always pass the MCP server name as the first argument.** If omitted, the script auto-detects from `.claude/linear-sync.json` + state file as a safety net, but fails loudly if resolution is impossible — no silent defaults to the wrong workspace.
 
 ```bash
 # Server name is ALWAYS the first arg — NEVER omit it

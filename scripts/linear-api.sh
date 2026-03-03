@@ -7,7 +7,9 @@
 #   linear-api.sh [server-name] 'mutation { ... }'
 #   linear-api.sh [server-name] 'mutation($input: IssueCreateInput!) { ... }' '{"input": {...}}'
 #
-# server-name: Name of the MCP server entry in mcp.json (default: "linear")
+# server-name: Name of the MCP server entry in mcp.json.
+#              Auto-detected from .claude/linear-sync.json + state file if omitted.
+#              Fails with error if auto-detection is impossible — no silent defaults.
 #              For multi-workspace setups, use the workspace-specific server name
 #              (e.g., "linear-opl", "linear-crystalpeak")
 #
@@ -19,10 +21,66 @@ set -euo pipefail
 
 MCP_CONFIG="$HOME/.claude/mcp.json"
 
+# ---------- resolve workspace server (no fallback) ----------
+resolve_server() {
+  # Auto-detect MCP server from repo config + state file.
+  # 1. git rev-parse --show-toplevel → repo root
+  # 2. Read .claude/linear-sync.json → workspace field
+  # 3. Read ~/.claude/linear-sync/state.json → workspaces.<ws>.mcp_server
+  # Fails loudly if resolution is impossible — no silent defaults.
+  # With set -e, failure here propagates to the caller and exits the script.
+  python3 -c "
+import json, os, subprocess, sys
+
+# Find repo root
+try:
+    r = subprocess.run(['git', 'rev-parse', '--show-toplevel'],
+                       capture_output=True, text=True, timeout=5)
+    git_top = r.stdout.strip()
+except Exception:
+    git_top = ''
+
+if not git_top:
+    print(json.dumps({'error': 'Not in a git repo. Pass server name explicitly.'}), file=sys.stderr)
+    sys.exit(1)
+
+# Read repo config
+repo_cfg_path = os.path.join(git_top, '.claude', 'linear-sync.json')
+workspace = ''
+try:
+    with open(repo_cfg_path) as f:
+        repo_cfg = json.load(f)
+    workspace = repo_cfg.get('workspace', '')
+except (FileNotFoundError, json.JSONDecodeError, KeyError):
+    pass
+
+if not workspace:
+    repo_name = os.path.basename(git_top)
+    print(json.dumps({'error': f'No .claude/linear-sync.json in repo \"{repo_name}\". Pass server name explicitly or run setup.'}), file=sys.stderr)
+    sys.exit(1)
+
+# Read state file for mcp_server
+state_path = os.path.expanduser('~/.claude/linear-sync/state.json')
+try:
+    with open(state_path) as f:
+        state = json.load(f)
+    ws_entry = state.get('workspaces', {}).get(workspace, {})
+    mcp_server = ws_entry.get('mcp_server', '')
+except (FileNotFoundError, json.JSONDecodeError, KeyError):
+    mcp_server = ''
+
+if not mcp_server:
+    print(json.dumps({'error': f'Workspace \"{workspace}\" has no mcp_server in state. Pass server name explicitly or run setup.'}), file=sys.stderr)
+    sys.exit(1)
+
+print(mcp_server)
+"
+}
+
 # ---------- parse args ----------
 VARIABLES=""
 if [ $# -eq 1 ]; then
-  SERVER="linear"
+  SERVER=$(resolve_server)
   QUERY="$1"
 elif [ $# -eq 2 ]; then
   if printf '%s' "$1" | python3 -c "
@@ -30,7 +88,7 @@ import sys
 a = sys.stdin.read().strip()
 sys.exit(0 if a.startswith('query') or a.startswith('mutation') or a.startswith('{') else 1)
 " 2>/dev/null; then
-    SERVER="linear"
+    SERVER=$(resolve_server)
     QUERY="$1"
     VARIABLES="$2"
   else
