@@ -70,8 +70,8 @@ def is_safe_universal(part):
     if not p:
         return True
 
-    # Safe non-git: ls
-    if re.match(r'^ls(\s|$)', p):
+    # Safe non-git: ls, and read-only utilities (often piped together)
+    if re.match(r'^(ls|sort|tail|head|wc|cat|basename|dirname|realpath|readlink|tr|cut|echo|printf|test|true)(\s|$)', p):
         return True
 
     # Safe non-git: find in .claude paths
