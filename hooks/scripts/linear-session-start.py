@@ -20,7 +20,7 @@ STATE_DIR = Path.home() / ".claude" / "linear-sync"
 STATE_FILE = STATE_DIR / "state.json"
 CACHE_DIR = STATE_DIR / ".cache"
 MCP_JSON = Path.home() / ".claude" / "mcp.json"
-DIGEST_INTERVAL = timedelta(hours=4)
+DIGEST_INTERVAL = timedelta(minutes=0)  # always fetch fresh digest on session start
 SUBPROCESS_TIMEOUT = 10  # leave headroom within 15s hook timeout
 
 
