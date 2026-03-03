@@ -243,14 +243,13 @@ def _detect_stale_branches(git_top, current_branch):
         return ""
 
 
-def _fetch_digest(scripts_dir, mcp_server, project, label):
+def _fetch_digest(scripts_dir, mcp_server, project):
     api = os.path.join(scripts_dir, "linear-api.sh")
     if not os.path.isfile(api):
         return ""
     query = (
         "query { viewer { assignedIssues(filter: { "
         f'project: {{ name: {{ eq: "{project}" }} }}, '
-        f'labels: {{ some: {{ name: {{ eq: "{label}" }} }} }}, '
         'state: { type: { in: ["started", "unstarted"] } } '
         "}, first: 10) { nodes { identifier title state { name } priority } } } }"
     )
@@ -480,7 +479,7 @@ def _handle_linked_repo(
             futures["title"] = pool.submit(_fetch_issue_title, scripts_dir, mcp_server, last_issue)
         futures["stale"] = pool.submit(_detect_stale_branches, git_top, current_branch)
         if should_digest:
-            futures["digest"] = pool.submit(_fetch_digest, scripts_dir, mcp_server, project, label)
+            futures["digest"] = pool.submit(_fetch_digest, scripts_dir, mcp_server, project)
 
     fetched_title = futures["title"].result() if "title" in futures else ""
     stale_branches = futures["stale"].result()
