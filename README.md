@@ -330,9 +330,17 @@ The standalone installer copies hooks, the subagent, and scripts to `~/.claude/`
 
 > **Note:** The standalone installer does not include the PostToolUse hook (`linear-post-push-sync.sh`), auto-approve hooks (`linear-api-allow.sh`, `linear-state-allow.sh`), or the skill file. These are plugin-only.
 
-### Configure Linear MCP
+### Configure Linear API Key
 
-Add your Linear API key to `~/.claude/mcp.json`:
+Export your Linear API key in `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+export LINEAR_API_KEY="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+Reload your shell (`source ~/.zshrc`) or open a new terminal.
+
+Then add the MCP server to `~/.claude/mcp.json`, referencing the environment variable:
 
 ```json
 {
@@ -342,14 +350,20 @@ Add your Linear API key to `~/.claude/mcp.json`:
       "command": "npx",
       "args": ["-y", "@anthropic/linear-mcp-server"],
       "env": {
-        "LINEAR_API_KEY": "<your-linear-api-key>"
+        "LINEAR_API_KEY": "$LINEAR_API_KEY"
       }
     }
   }
 }
 ```
 
-For multiple workspaces, add one entry per workspace:
+For multiple workspaces, export a separate variable per workspace and reference each one:
+
+```bash
+# ~/.zshrc
+export LINEAR_API_KEY_OPL="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export LINEAR_API_KEY_CRYSTALPEAK="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
 
 ```json
 {
@@ -358,13 +372,13 @@ For multiple workspaces, add one entry per workspace:
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@anthropic/linear-mcp-server"],
-      "env": { "LINEAR_API_KEY": "<opl-key>" }
+      "env": { "LINEAR_API_KEY": "$LINEAR_API_KEY_OPL" }
     },
     "linear-crystalpeak": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@anthropic/linear-mcp-server"],
-      "env": { "LINEAR_API_KEY": "<crystalpeak-key>" }
+      "env": { "LINEAR_API_KEY": "$LINEAR_API_KEY_CRYSTALPEAK" }
     }
   }
 }
