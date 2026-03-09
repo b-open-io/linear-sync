@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+  "$id": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "title": "Linear Sync Repo Config",
   "description": "Configuration for the linear-sync system, stored at .claude/linear-sync.json in a repo root.",
   "type": "object",

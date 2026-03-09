@@ -65,10 +65,10 @@ After setup it looks like:
       "github_org": "opl-org",
       "default_team": "ENG"
     },
-    "crystal-peak": {
-      "name": "Crystal Peak",
+    "b-open-io": {
+      "name": "b-open-io",
       "linear_api_key_env": "LINEAR_API_KEY_CRYSTALPEAK",
-      "github_org": "crystal-peak",
+      "github_org": "b-open-io",
       "default_team": "CP"
     }
   },
@@ -85,7 +85,7 @@ After setup it looks like:
   },
   "github_org_defaults": {
     "opl-org": "opl",
-    "crystal-peak": "crystal-peak"
+    "b-open-io": "b-open-io"
   }
 }
 ```

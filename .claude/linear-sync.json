@@ -1,9 +1,9 @@
 {
-  "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+  "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync, commit hooks, and branch naming.",
-  "workspace": "crystal-peak",
+  "workspace": "b-open-io",
   "project": "Linear Sync",
   "team": "PEAK",
   "label": "repo:linear-sync",
-  "github_org": "crystal-peak"
+  "github_org": "b-open-io"
 }

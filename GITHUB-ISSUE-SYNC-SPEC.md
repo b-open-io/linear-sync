@@ -24,13 +24,13 @@ Located in the repo root. Committed to git. This is the shared source of truth f
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+  "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync, commit hooks, and branch naming. If you need to change the project or team, run the setup wizard again.",
   "workspace": "openprotocollabs",
   "project": "Linear Sync Test",
   "team": "OPL",
   "label": "repo:linear-sync-test",
-  "github_org": "crystal-peak"
+  "github_org": "b-open-io"
 }
 
 ```
@@ -54,7 +54,7 @@ The local state file (`~/.claude/scripts/linear-repo-links.json`) **no longer st
   "workspaces": {
     "openprotocollabs": {
       "name": "Open Protocol Labs",
-      "github_org": "crystal-peak"
+      "github_org": "b-open-io"
     }
   },
   "repos": {
@@ -63,7 +63,7 @@ The local state file (`~/.claude/scripts/linear-repo-links.json`) **no longer st
     }
   },
   "github_org_defaults": {
-    "crystal-peak": "crystalpeak"
+    "b-open-io": "crystalpeak"
   }
 }
 ```

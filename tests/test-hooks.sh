@@ -99,7 +99,7 @@ setup_temp_repo() {
   # Write repo config
   cat > "$TEMP_DIR/test-repo/.claude/linear-sync.json" << 'REPOCFG'
 {
-  "workspace": "crystal-peak",
+  "workspace": "b-open-io",
   "project": "Test Project",
   "team": "PEAK",
   "label": "repo:test-repo"
@@ -112,14 +112,14 @@ setup_temp_state() {
   cat > "$TEMP_DIR/state-dir/state.json" << 'STATECFG'
 {
   "workspaces": {
-    "crystal-peak": {
-      "name": "Crystal Peak",
+    "b-open-io": {
+      "name": "b-open-io",
       "mcp_server": "linear-crystalpeak"
     }
   },
   "repos": {
     "test-repo": {
-      "workspace": "crystal-peak"
+      "workspace": "b-open-io"
     }
   }
 }
@@ -528,7 +528,7 @@ fi
 # ==========================================================================
 section "API Allow: cd && bash Pattern"
 
-CMD='cd /Users/test/.claude/plugins/cache/crystal-peak/linear-sync/0.0.9-alpha && bash scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\'''
+CMD='cd /Users/test/.claude/plugins/cache/b-open-io/linear-sync/0.0.9-alpha && bash scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\'''
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -765,7 +765,7 @@ fi
 # ==========================================================================
 section "State Allow: Plugin Scripts (Read-only)"
 
-INPUT=$(rw_hook_input "Read" "$HOME_DIR/.claude/plugins/cache/crystal-peak/linear-sync/0.0.9-alpha/scripts/linear-api.sh")
+INPUT=$(rw_hook_input "Read" "$HOME_DIR/.claude/plugins/cache/b-open-io/linear-sync/0.0.9-alpha/scripts/linear-api.sh")
 RESULT=$(run_hook "$STATE_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -776,7 +776,7 @@ else
 fi
 
 # Write to plugin scripts should NOT be auto-approved
-INPUT=$(rw_hook_input "Write" "$HOME_DIR/.claude/plugins/cache/crystal-peak/linear-sync/0.0.9-alpha/scripts/linear-api.sh")
+INPUT=$(rw_hook_input "Write" "$HOME_DIR/.claude/plugins/cache/b-open-io/linear-sync/0.0.9-alpha/scripts/linear-api.sh")
 RESULT=$(run_hook "$STATE_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"

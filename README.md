@@ -1,10 +1,10 @@
 # Linear Sync
 
-> **Alpha** — This plugin is under active development. Expect rough edges, breaking changes, and incomplete docs. Feedback and issues welcome at [crystal-peak/linear-sync](https://github.com/crystal-peak/linear-sync/issues).
+> **Alpha** — This plugin is under active development. Expect rough edges, breaking changes, and incomplete docs. Feedback and issues welcome at [b-open-io/linear-sync](https://github.com/b-open-io/linear-sync/issues).
 
 A Claude Code plugin that keeps [Linear](https://linear.app) and GitHub in sync. Automatic issue tracking, branch naming, commit enforcement, PR descriptions, GitHub issue sync, and progress updates — all through natural conversation.
 
-Install via `claude plugin install linear-sync@crystal-peak` (after adding the [Crystal Peak marketplace](https://github.com/crystal-peak/claude-plugins)).
+Install via `claude plugin install linear-sync@b-open-io` (after adding the [b-open-io marketplace](https://github.com/b-open-io/claude-plugins)).
 
 ## How It Works
 
@@ -293,23 +293,23 @@ flowchart TD
 
 ### Install via Plugin (Recommended)
 
-Add the Crystal Peak marketplace (one-time):
+Add the b-open-io marketplace (one-time):
 
 ```bash
-claude plugin marketplace add crystal-peak/claude-plugins
+claude plugin marketplace add b-open-io/claude-plugins
 ```
 
 Install the plugin:
 
 ```bash
-claude plugin install linear-sync@crystal-peak
+claude plugin install linear-sync@b-open-io
 ```
 
 Update to the latest version:
 
 ```bash
-claude plugin marketplace update crystal-peak       # pull latest registry
-claude plugin update linear-sync@crystal-peak        # update the plugin
+claude plugin marketplace update b-open-io       # pull latest registry
+claude plugin update linear-sync@b-open-io        # update the plugin
 ```
 
 Restart Claude Code after installing or updating for changes to take effect.
@@ -321,7 +321,7 @@ The plugin system handles hook registration, agent loading, skill activation, an
 For use without the plugin system:
 
 ```bash
-git clone https://github.com/crystal-peak/linear-sync.git
+git clone https://github.com/b-open-io/linear-sync.git
 cd linear-sync
 bash install.sh
 ```
@@ -487,13 +487,13 @@ The `.claude/linear-sync.json` file committed to each repo:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+  "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync.",
   "workspace": "crystalpeak",
   "project": "My Project",
   "team": "PEAK",
   "label": "repo:my-repo",
-  "github_org": "crystal-peak"
+  "github_org": "b-open-io"
 }
 ```
 
@@ -528,13 +528,13 @@ To opt out after setup, delete the repo entry from `~/.claude/linear-sync/state.
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync@crystal-peak` then restart Claude Code. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
+**Hooks not firing?** Run `claude plugin marketplace update b-open-io && claude plugin update linear-sync@b-open-io` then restart Claude Code. For standalone installs, verify `~/.claude/settings.json` has the hook entries and re-run `bash install.sh`.
 
 **"python3 not found"?** Install Python 3 and ensure `python3` is in your PATH.
 
 **Re-link a repo?** Delete `.claude/linear-sync.json` from the repo, remove the repo entry from `~/.claude/linear-sync/state.json`, and restart Claude Code.
 
-**Uninstall (plugin)?** Run `claude plugin uninstall linear-sync@crystal-peak`.
+**Uninstall (plugin)?** Run `claude plugin uninstall linear-sync@b-open-io`.
 
 **Uninstall (standalone)?** Remove hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 

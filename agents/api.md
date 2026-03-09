@@ -17,7 +17,7 @@ You are the Linear Sync subagent. You handle Linear API queries so the main Clau
 
 If no `scripts_dir` is provided, resolve it yourself:
 ```bash
-API_SCRIPT=$(ls ~/.claude/plugins/cache/crystal-peak/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)
+API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)
 ```
 
 Store the resolved path and reuse it. **Never use `${CLAUDE_PLUGIN_ROOT}` in Bash commands** — it is not available as an environment variable.
@@ -166,14 +166,14 @@ Example operations:
 When the main agent asks you to set up a repo:
 
 1. Check workspace cache. Use cached data if fresh. Otherwise fetch and update cache.
-2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "crystal-peak" → "linear-crystalpeak"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
+2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "b-open-io" → "linear-crystalpeak"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
 3. Return the list to the main agent as a concise formatted list.
 4. After the main agent tells you what the dev picked:
    a. Verify/create the label.
    b. Write `.claude/linear-sync.json` in the repo root:
       ```json
       {
-        "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+        "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
         "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync, commit hooks, and branch naming.",
         "workspace": "<workspace_slug>",
         "project": "<project_name>",

@@ -13,23 +13,23 @@
 
 ### Via Plugin (Recommended)
 
-Add the Crystal Peak marketplace (one-time):
+Add the b-open-io marketplace (one-time):
 
 ```bash
-claude plugin marketplace add crystal-peak/claude-plugins
+claude plugin marketplace add b-open-io/claude-plugins
 ```
 
 Install the plugin:
 
 ```bash
-claude plugin install linear-sync@crystal-peak
+claude plugin install linear-sync@b-open-io
 ```
 
 Update to the latest version:
 
 ```bash
-claude plugin marketplace update crystal-peak       # pull latest registry
-claude plugin update linear-sync@crystal-peak        # update the plugin
+claude plugin marketplace update b-open-io       # pull latest registry
+claude plugin update linear-sync@b-open-io        # update the plugin
 ```
 
 Restart Claude Code after installing or updating for changes to take effect.
@@ -41,7 +41,7 @@ The plugin system handles hook registration, agent loading, and script paths aut
 If you don't want to use the plugin system:
 
 ```bash
-git clone https://github.com/crystal-peak/linear-sync.git
+git clone https://github.com/b-open-io/linear-sync.git
 cd linear-sync
 bash install.sh
 ```
@@ -149,7 +149,7 @@ Linear Sync stores shared repo config in a committed file at `.claude/linear-syn
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/crystal-peak/linear-sync/main/schema/linear-sync.json",
+  "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync, commit hooks, and branch naming. If you need to change the project or team, run the setup wizard again.",
   "workspace": "crystalpeak",
   "project": "My Project",
@@ -189,12 +189,12 @@ During setup, pick "This repo doesn't use Linear." All hooks go completely silen
 
 ## Troubleshooting
 
-**Hooks not firing?** Run `claude plugin marketplace update crystal-peak && claude plugin update linear-sync@crystal-peak` then restart Claude Code. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
+**Hooks not firing?** Run `claude plugin marketplace update b-open-io && claude plugin update linear-sync@b-open-io` then restart Claude Code. For standalone installs, check that `~/.claude/settings.json` has the hook entries.
 
 **"python3 not found"?** Install Python 3 and make sure `python3` is in your PATH.
 
 **Want to re-link a repo?** If the repo has a `.claude/linear-sync.json` file, that is the primary config — delete or edit it first. Then delete the repo's entry from `~/.claude/linear-sync/state.json` (if one exists) and restart Claude Code in that repo to re-run the setup wizard.
 
-**Want to uninstall?** Plugin: `claude plugin uninstall linear-sync@crystal-peak`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
+**Want to uninstall?** Plugin: `claude plugin uninstall linear-sync@b-open-io`. Standalone: remove the hook files from `~/.claude/hooks/`, the agent from `~/.claude/agents/api.md`, and the `Linear Sync (Auto-Managed)` section from `~/.claude/CLAUDE.md`.
 
 **Stale branch warnings?** At session start, you'll see warnings for local branches with no commits in 5+ days. This is informational — you can clean them up or ignore. To delete a merged stale branch: `git branch -d <branch-name>`. To force-delete an unmerged branch: `git branch -D <branch-name>`.

@@ -2,7 +2,7 @@
 # linear-state-allow.sh — PreToolUse hook to auto-approve Read/Write on linear-sync paths
 # Auto-approves:
 #   Read/Write on ~/.claude/linear-sync/ (state file)
-#   Read-only on ~/.claude/plugins/cache/crystal-peak/linear-sync/ (plugin scripts for debugging)
+#   Read-only on ~/.claude/plugins/cache/b-open-io/linear-sync/ (plugin scripts for debugging)
 # Event: PreToolUse (matcher: Read|Write)
 # Timeout: 5s
 set -euo pipefail
@@ -28,7 +28,7 @@ fi
 
 # Read only: auto-approve reading plugin scripts (for self-debugging)
 if [[ "$TOOL_NAME" == "Read" ]]; then
-  if [[ "$FILE_PATH" == "$HOME_DIR/.claude/plugins/cache/crystal-peak/linear-sync/"* ]] || [[ "$FILE_PATH" == "~/.claude/plugins/cache/crystal-peak/linear-sync/"* ]]; then
+  if [[ "$FILE_PATH" == "$HOME_DIR/.claude/plugins/cache/b-open-io/linear-sync/"* ]] || [[ "$FILE_PATH" == "~/.claude/plugins/cache/b-open-io/linear-sync/"* ]]; then
     printf '%s\n' "$ALLOW"
     exit 0
   fi
