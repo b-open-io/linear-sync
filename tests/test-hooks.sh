@@ -137,10 +137,17 @@ trap cleanup_temp EXIT
 # ==========================================================================
 #  COMMIT GUARD TESTS
 # ==========================================================================
+
+# Set up temp repo + state so the commit guard sees a linked repo
+setup_temp_repo
+setup_temp_state
+export STATE_FILE_OVERRIDE="$TEMP_DIR/state-dir/state.json"
+GUARD_CWD="$TEMP_DIR/test-repo"
+
 section "Commit Guard: Commits"
 
 # Test commit with issue ID
-INPUT=$(hook_input 'git commit -m "PEAK-123: fix bug"' "$REPO_ROOT")
+INPUT=$(hook_input 'git commit -m "PEAK-123: fix bug"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -151,7 +158,7 @@ else
 fi
 
 # Test commit without issue ID
-INPUT=$(hook_input 'git commit -m "fix bug"' "$REPO_ROOT")
+INPUT=$(hook_input 'git commit -m "fix bug"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -163,7 +170,7 @@ fi
 
 # Test commit with heredoc (HEREDOC contains PEAK-456)
 HEREDOC_CMD=$(printf 'git commit -m "$(cat <<'\''EOF'\''\nPEAK-456: add feature\n\nDetailed description\nEOF\n)"')
-INPUT=$(hook_input "$HEREDOC_CMD" "$REPO_ROOT")
+INPUT=$(hook_input "$HEREDOC_CMD" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -174,7 +181,7 @@ else
 fi
 
 # Test --amend --no-edit (allowed regardless of message)
-INPUT=$(hook_input 'git commit --amend --no-edit' "$REPO_ROOT")
+INPUT=$(hook_input 'git commit --amend --no-edit' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -185,7 +192,7 @@ else
 fi
 
 # Test bare commit (no -m, no --message, no EOF)
-INPUT=$(hook_input 'git commit' "$REPO_ROOT")
+INPUT=$(hook_input 'git commit' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -199,7 +206,7 @@ fi
 section "Commit Guard: Branches"
 
 # Test branch creation with issue ID
-INPUT=$(hook_input 'git checkout -b PEAK-100-new-feature' "$REPO_ROOT")
+INPUT=$(hook_input 'git checkout -b PEAK-100-new-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -210,7 +217,7 @@ else
 fi
 
 # Test branch creation without issue ID
-INPUT=$(hook_input 'git checkout -b some-feature' "$REPO_ROOT")
+INPUT=$(hook_input 'git checkout -b some-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -221,7 +228,7 @@ else
 fi
 
 # Test switch -c with issue ID
-INPUT=$(hook_input 'git switch -c PEAK-200-feature' "$REPO_ROOT")
+INPUT=$(hook_input 'git switch -c PEAK-200-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -235,7 +242,7 @@ fi
 section "Commit Guard: Branch Renames"
 
 # Test branch rename with issue ID
-INPUT=$(hook_input 'git branch -m old-branch PEAK-300-new-name' "$REPO_ROOT")
+INPUT=$(hook_input 'git branch -m old-branch PEAK-300-new-name' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -246,7 +253,7 @@ else
 fi
 
 # Test branch rename without issue ID
-INPUT=$(hook_input 'git branch -m old-branch new-branch-no-id' "$REPO_ROOT")
+INPUT=$(hook_input 'git branch -m old-branch new-branch-no-id' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -257,7 +264,7 @@ else
 fi
 
 # Test branch -M (force rename) with issue ID
-INPUT=$(hook_input 'git branch -M PEAK-400-force-rename' "$REPO_ROOT")
+INPUT=$(hook_input 'git branch -M PEAK-400-force-rename' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -271,7 +278,7 @@ fi
 section "Commit Guard: Push & PR"
 
 # Test git push
-INPUT=$(hook_input 'git push -u origin PEAK-100-feature' "$REPO_ROOT")
+INPUT=$(hook_input 'git push -u origin PEAK-100-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -282,7 +289,7 @@ else
 fi
 
 # Test PR with issue ID in title
-INPUT=$(hook_input 'gh pr create --title "PEAK-100: Add feature" --body "desc"' "$REPO_ROOT")
+INPUT=$(hook_input 'gh pr create --title "PEAK-100: Add feature" --body "desc"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -293,7 +300,7 @@ else
 fi
 
 # Test PR without issue ID
-INPUT=$(hook_input 'gh pr create --title "Add feature" --body "desc"' "$REPO_ROOT")
+INPUT=$(hook_input 'gh pr create --title "Add feature" --body "desc"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -322,7 +329,7 @@ for git_cmd in \
   "git cat-file -t HEAD" \
   "git fetch origin"
 do
-  INPUT=$(hook_input "$git_cmd" "$REPO_ROOT")
+  INPUT=$(hook_input "$git_cmd" "$GUARD_CWD")
   RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
   EXIT_CODE="${RESULT%%|*}"
   OUTPUT="${RESULT#*|}"
@@ -347,7 +354,7 @@ for git_cmd in \
   "git branch --contains HEAD" \
   "git branch --merged"
 do
-  INPUT=$(hook_input "$git_cmd" "$REPO_ROOT")
+  INPUT=$(hook_input "$git_cmd" "$GUARD_CWD")
   RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
   EXIT_CODE="${RESULT%%|*}"
   OUTPUT="${RESULT#*|}"
@@ -366,7 +373,7 @@ for git_cmd in \
   "git tag -l" \
   "git tag --list"
 do
-  INPUT=$(hook_input "$git_cmd" "$REPO_ROOT")
+  INPUT=$(hook_input "$git_cmd" "$GUARD_CWD")
   RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
   EXIT_CODE="${RESULT%%|*}"
   OUTPUT="${RESULT#*|}"
@@ -380,7 +387,7 @@ done
 # ==========================================================================
 section "Commit Guard: Safe Non-git (Auto-approve)"
 
-INPUT=$(hook_input "ls -la" "$REPO_ROOT")
+INPUT=$(hook_input "ls -la" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -390,7 +397,7 @@ else
   fail "should auto-approve: ls -la" "exit=$EXIT_CODE"
 fi
 
-INPUT=$(hook_input "find ~/.claude/linear-sync -name '*.json'" "$REPO_ROOT")
+INPUT=$(hook_input "find ~/.claude/linear-sync -name '*.json'" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -411,7 +418,7 @@ for git_cmd in \
   "git stash pop" \
   "git pull"
 do
-  INPUT=$(hook_input "$git_cmd" "$REPO_ROOT")
+  INPUT=$(hook_input "$git_cmd" "$GUARD_CWD")
   RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
   EXIT_CODE="${RESULT%%|*}"
   OUTPUT="${RESULT#*|}"
@@ -426,7 +433,7 @@ done
 section "Commit Guard: Chained Commands"
 
 # Safe chain: read-only git && read-only git
-INPUT=$(hook_input "git status && git log --oneline -5" "$REPO_ROOT")
+INPUT=$(hook_input "git status && git log --oneline -5" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -437,7 +444,7 @@ else
 fi
 
 # Mixed safe chain in linked repo: git add && git status
-INPUT=$(hook_input "git add . && git status" "$REPO_ROOT")
+INPUT=$(hook_input "git add . && git status" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -458,7 +465,7 @@ for git_cmd in \
   "git branch -D feature" \
   "git tag -d v1.0"
 do
-  INPUT=$(hook_input "$git_cmd" "$REPO_ROOT")
+  INPUT=$(hook_input "$git_cmd" "$GUARD_CWD")
   RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
   EXIT_CODE="${RESULT%%|*}"
   OUTPUT="${RESULT#*|}"
@@ -469,6 +476,9 @@ do
     fail "should NOT auto-approve destructive: $git_cmd" "$OUTPUT"
   fi
 done
+
+# Clean up commit guard fixtures (API tests don't need linked repo)
+unset STATE_FILE_OVERRIDE
 
 # ==========================================================================
 #  API ALLOW TESTS
@@ -509,6 +519,96 @@ if is_allowed "$OUTPUT"; then
   pass "variable assignments + API call is allowed"
 else
   fail "variable assignments + API call should be allowed" "$OUTPUT"
+fi
+
+# ==========================================================================
+section "API Allow: Path Resolution (standalone)"
+
+# ls glob && echo pattern (just resolving the script path, no API call)
+CMD='API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1) && echo "$API_SCRIPT"'
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "path resolution with && echo is allowed"
+else
+  fail "path resolution with && echo should be allowed" "$OUTPUT"
+fi
+
+# ls glob without echo (just the assignment)
+CMD='API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)'
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "path resolution without echo is allowed"
+else
+  fail "path resolution without echo should be allowed" "$OUTPUT"
+fi
+
+# Path resolution with dangerous chaining should NOT be allowed
+CMD='API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1) && rm -rf /'
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_allowed "$OUTPUT"; then
+  pass "path resolution with dangerous chaining is not allowed"
+else
+  fail "path resolution with dangerous chaining should NOT be allowed" "$OUTPUT"
+fi
+
+# ==========================================================================
+section "API Allow: Indirect Variable (ls glob + bash \$VAR)"
+
+# Exact pattern from api.md agent: resolve script path via ls, then call via variable
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-crystalpeak '\''query { viewer { id } }'\''')
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "ls glob + bash \"\$API_SCRIPT\" is allowed"
+else
+  fail "ls glob + bash \"\$API_SCRIPT\" should be allowed" "$OUTPUT"
+fi
+
+# With echo debug line in between
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\necho "Script: $API_SCRIPT"\nbash "$API_SCRIPT" linear-crystalpeak '\''query { viewer { id } }'\''')
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "ls glob + echo + bash \"\$API_SCRIPT\" is allowed"
+else
+  fail "ls glob + echo + bash \"\$API_SCRIPT\" should be allowed" "$OUTPUT"
+fi
+
+# With multiline GraphQL query
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-crystalpeak '\''query {\n  issues(first: 10) {\n    nodes { id title }\n  }\n}'\''')
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "ls glob + bash \"\$API_SCRIPT\" with multiline query is allowed"
+else
+  fail "ls glob + bash \"\$API_SCRIPT\" with multiline query should be allowed" "$OUTPUT"
+fi
+
+# Indirect variable WITHOUT linear-api.sh in assignment should NOT be allowed
+CMD=$(printf 'SCRIPT=$(ls /tmp/evil-script.sh)\nbash "$SCRIPT" '\''query { viewer { id } }'\''')
+INPUT=$(hook_input "$CMD" "$REPO_ROOT")
+RESULT=$(run_hook "$API_ALLOW" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_allowed "$OUTPUT"; then
+  pass "indirect variable from non-API path is not allowed"
+else
+  fail "indirect variable from non-API path should NOT be allowed" "$OUTPUT"
 fi
 
 # ==========================================================================

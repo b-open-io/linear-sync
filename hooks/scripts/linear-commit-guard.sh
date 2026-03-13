@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # ---------- helpers ----------
-STATE_FILE="$HOME/.claude/linear-sync/state.json"
+STATE_FILE="${STATE_FILE_OVERRIDE:-$HOME/.claude/linear-sync/state.json}"
 
 has_issue_id() {
   printf '%s' "$1" | python3 -c "
