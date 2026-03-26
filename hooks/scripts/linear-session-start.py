@@ -17,7 +17,7 @@ from pathlib import Path
 
 # ── constants ──────────────────────────────────────────────────────
 STATE_DIR = Path.home() / ".claude" / "linear-sync"
-STATE_FILE = STATE_DIR / "state.json"
+STATE_FILE = Path(os.environ["STATE_FILE_OVERRIDE"]) if "STATE_FILE_OVERRIDE" in os.environ else STATE_DIR / "state.json"
 CACHE_DIR = STATE_DIR / ".cache"
 MCP_JSON = Path.home() / ".claude" / "mcp.json"
 DIGEST_INTERVAL = timedelta(minutes=0)  # always fetch fresh digest on session start
@@ -135,12 +135,7 @@ def load_repo_config(git_top):
                 "[LINEAR-WARNING] .claude/linear-sync.json exists but is malformed."
                 " Falling back to local config.\n"
             )
-        return {
-            "workspace": ws,
-            "project": cfg.get("project", ""),
-            "team": cfg.get("team", ""),
-            "label": cfg.get("label", ""),
-        }, path, ""
+        return cfg, path, ""
     except Exception:
         return None, path, (
             "[LINEAR-WARNING] .claude/linear-sync.json exists but is malformed."
