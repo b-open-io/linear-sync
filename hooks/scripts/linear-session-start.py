@@ -362,6 +362,34 @@ def main():
     if local_entry and local_entry.get("workspace") == "none":
         sys.exit(0)
 
+    # ── CONFIG SANITY CHECKS ──────────────────────────────────────
+    warnings = []
+    if repo_config is not None:
+        # Detect legacy key format (teamId/teamKey/projectId/labelId)
+        legacy_keys = {"teamId", "teamKey", "projectId", "labelId", "github_repo"}
+        found_legacy = legacy_keys & set(repo_config.keys())
+        if found_legacy:
+            warnings.append(
+                f"Legacy config keys detected: {', '.join(sorted(found_legacy))}."
+                f" Run the setup wizard to migrate to the current schema"
+                f" (team/project/label)."
+            )
+        # Detect github_org drift (actual remote vs config)
+        if github_org and repo_config.get("github_org"):
+            cfg_org = repo_config["github_org"]
+            if cfg_org != github_org:
+                warnings.append(
+                    f"github_org mismatch: config says '{cfg_org}' but git"
+                    f" remote points to '{github_org}'. Repo may have been"
+                    f" transferred. Update .claude/linear-sync.json."
+                )
+    if warnings:
+        warning_text = " | ".join(warnings)
+        config_warning = (
+            f"{config_warning} | {warning_text}" if config_warning
+            else warning_text
+        )
+
     # Resolve effective entry (merge repo config if present)
     effective_entry = None
     if repo_config is not None:
