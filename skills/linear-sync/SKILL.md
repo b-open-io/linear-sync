@@ -83,6 +83,7 @@ These conventions are mechanically enforced by hooks. They apply ONLY to repos w
 | `gh pr create` (after success) | **Offer** a progress comment on the Linear issue | PostToolUse hook reminder + AskUserQuestion |
 | `git push` (final push) | **Offer** a progress comment on the Linear issue | PostToolUse hook reminder + AskUserQuestion |
 | Session ending / major milestone | **Offer** a progress comment on the Linear issue | AskUserQuestion |
+| User asks "what's open" / "what needs to be done" / project status / milestone status / "what's left" | Use **Fetch Open Project Work** (Tier 2). Never answer from the digest or "Fetch My Issues" alone — both are assignee-gated and miss sub-issues + milestones. | Subagent delegation |
 
 ## Linear Comments
 
@@ -240,7 +241,8 @@ Determine `<server>` from the `mcp_server` field in session-start context (e.g.,
 ### Tier 2: Background subagent (`linear-sync:api`)
 For multi-step operations where the main agent doesn't need the result immediately. Subagent uses MCP tools internally, returns concise 1-3 line summaries:
 - **Fetch Issue Summary** — issue details + blocker warnings
-- **Fetch My Issues** — assigned in-progress issues list
+- **Fetch My Issues** — assigned in-progress issues list (assignee-gated; top-level only view of your personal queue)
+- **Fetch Open Project Work** — project-wide open issues grouped by milestone, with sub-issue hierarchy. **Use whenever the user asks about open project work, deadlines, milestones, or "what's left".** This is the only task that surfaces sub-issues and Linear Project Milestones.
 - **Search Issues** — duplicate detection before creation
 
 ### Tier 3: Foreground subagent (`linear-sync:api`)

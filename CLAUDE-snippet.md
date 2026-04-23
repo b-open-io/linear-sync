@@ -87,6 +87,7 @@ These conventions are mechanically enforced by hooks. They apply ONLY to repos w
 | `gh pr create` (after success) | **Offer** a progress comment on the Linear issue | AskUserQuestion |
 | `git push` (final push before wrapping up) | **Offer** a progress comment on the Linear issue | AskUserQuestion |
 | Session ending / major milestone | **Offer** a progress comment on the Linear issue | AskUserQuestion |
+| User asks "what's open" / "what needs to be done" / project status / milestone status / "what's left" | Delegate to `linear-sync` subagent (background) with the **"Fetch Open Project Work"** task. Never answer from the digest or "Fetch My Issues" alone — both are assignee-gated and miss sub-issues + milestones. | Subagent delegation |
 
 ### Linear Comments
 

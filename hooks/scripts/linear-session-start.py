@@ -246,7 +246,8 @@ def _fetch_digest(scripts_dir, mcp_server, project):
         "query { viewer { assignedIssues(filter: { "
         f'project: {{ name: {{ eq: "{project}" }} }}, '
         'state: { type: { in: ["started", "unstarted"] } } '
-        "}, first: 10) { nodes { identifier title state { name } priority } } } }"
+        "}, first: 10) { nodes { identifier title state { name } priority "
+        "parent { identifier title } } } } }"
     )
     try:
         cmd = ["bash", api]
@@ -261,9 +262,14 @@ def _fetch_digest(scripts_dir, mcp_server, project):
         )
         if not nodes:
             return "No pending items."
-        return "\n".join(
-            f'{i["identifier"]}: {i["title"]} [{i["state"]["name"]}]' for i in nodes
-        )
+        lines = []
+        for i in nodes:
+            line = f'{i["identifier"]}: {i["title"]} [{i["state"]["name"]}]'
+            parent = i.get("parent")
+            if parent and parent.get("identifier"):
+                line += f' — under {parent["identifier"]}'
+            lines.append(line)
+        return "\n".join(lines)
     except Exception:
         return ""
 

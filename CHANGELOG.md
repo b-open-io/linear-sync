@@ -2,6 +2,17 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.21-alpha] - 2026-04-23
+
+### Added
+- New subagent task **Fetch Open Project Work**: single-query GraphQL that pulls every open issue in the project (including sub-issues at any depth) plus all Linear Project Milestones, then groups the output by milestone with parent/child hierarchy. Returns a tree so nothing gets swallowed.
+- Skill and CLAUDE-snippet enforcement rule routing "what's open / what needs to be done / project status / milestones / what's left" questions to the new task. Previously these went through `Fetch My Issues`, which is assignee-gated and hid sub-issues.
+- `parent { identifier title }` added to the session-start digest query; issues that are sub-issues now render with ` — under PARENT-ID` inline so you see hierarchy without a second round trip.
+- `parent { identifier title }` added to the `Fetch My Issues` selection so sub-issues in the personal queue list show their parent.
+
+### Fixed
+- Sub-issues and project milestones were invisible whenever the user asked "what are the open issues for this project?" — caused missed deadlines because the real work often lives under parent epics. Root cause: every issue-fetching code path used `viewer.assignedIssues` with no `parent` or `projectMilestone` selection. Now the dedicated on-ask query uses `issues(filter: { project })`, which Linear flattens across hierarchy.
+
 ## [0.0.19-alpha] - 2026-03-13
 
 ### Added
