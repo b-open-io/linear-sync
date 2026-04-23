@@ -247,7 +247,9 @@ def _fetch_digest(scripts_dir, mcp_server, project):
         f'project: {{ name: {{ eq: "{project}" }} }}, '
         'state: { type: { in: ["started", "unstarted"] } } '
         "}, first: 10) { nodes { identifier title state { name } priority "
-        "parent { identifier title } } } } }"
+        "parent { identifier title } "
+        "projectMilestone { name targetDate } "
+        "children(first: 20) { nodes { state { type } } } } } } }"
     )
     try:
         cmd = ["bash", api]
@@ -262,12 +264,26 @@ def _fetch_digest(scripts_dir, mcp_server, project):
         )
         if not nodes:
             return "No pending items."
+        open_states = {"started", "unstarted", "triage", "backlog"}
         lines = []
         for i in nodes:
             line = f'{i["identifier"]}: {i["title"]} [{i["state"]["name"]}]'
             parent = i.get("parent")
             if parent and parent.get("identifier"):
                 line += f' — under {parent["identifier"]}'
+            milestone = i.get("projectMilestone")
+            if milestone and milestone.get("name"):
+                target = milestone.get("targetDate")
+                line += f' — milestone: {milestone["name"]}'
+                if target:
+                    line += f' ({target})'
+            children = (i.get("children") or {}).get("nodes") or []
+            open_children = sum(
+                1 for c in children
+                if (c.get("state") or {}).get("type") in open_states
+            )
+            if open_children:
+                line += f' — +{open_children} open sub-issues'
             lines.append(line)
         return "\n".join(lines)
     except Exception:

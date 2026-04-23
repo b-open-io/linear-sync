@@ -190,9 +190,13 @@ When the main agent asks you to set up a repo:
 
 ### Fetch Issue Summary
 
-1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "PEAK-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } } }'`
+1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "PEAK-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } parent { identifier title } projectMilestone { name targetDate } children(first: 20) { nodes { identifier title state { name type } assignee { name } } } } }'`
 2. Check relations for "blocks" type to surface blockers.
-3. Return concise summary with blocker warnings if any.
+3. Return concise summary. When present, include:
+   - **Parent**: if `parent` is set, add `Sub-issue of <parent.identifier>: <parent.title>` on its own line.
+   - **Milestone**: if `projectMilestone` is set, add `Milestone: <name> (due <targetDate>)` on its own line.
+   - **Open sub-issues**: if `children.nodes` contains any whose `state.type` is in `["started","unstarted","triage","backlog"]`, list them under an `Open sub-issues:` line (one per line: `<identifier>: <title> [<state.name>, @<assignee.name or —>]`).
+   - **Blockers**: existing behavior — warn on `relations` with `type: blocks`.
 
 ### Create Issue
 
@@ -205,50 +209,11 @@ When the main agent asks you to set up a repo:
 
 ### Fetch My Issues
 
-1. Query assigned issues: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { viewer { assignedIssues(filter: { state: { type: { in: ["started", "unstarted"] } } }, first: 20) { nodes { identifier title state { name } priority priorityLabel parent { identifier title } } } } }'`
-2. Return numbered list with state, priority, and project. If an issue has a `parent`, append `(under <parent.identifier>: <parent.title>)` after the line so sub-issues are visible as such.
-
-### Fetch Open Project Work
-
-**Use when the user asks about open project issues, project status, milestones, deadlines, or "what's left / needs to be done".** This is the only task that surfaces sub-issues and project milestones — the other tasks (`Fetch My Issues`, session digest) are assignee-gated and miss hierarchy and milestones.
-
-1. Read `project` (name) from the repo config at `.claude/linear-sync.json` in the repo root (or from the main agent's context if passed in the delegation prompt).
-2. Run a single GraphQL request that pulls every open issue in the project plus all its milestones:
-
-   ```
-   QUERY='query { project: projects(filter: { name: { eq: "<PROJECT>" } }, first: 1) { nodes { id name projectMilestones(first: 50) { nodes { id name targetDate sortOrder } } } } issues(filter: { project: { name: { eq: "<PROJECT>" } }, state: { type: { in: ["started", "unstarted", "backlog"] } } }, first: 200) { nodes { identifier title priority priorityLabel state { name type } assignee { name } parent { identifier title } projectMilestone { id name targetDate } } pageInfo { hasNextPage endCursor } } }'
-   bash "$API_SCRIPT" "$MCP_SERVER" "$QUERY"
-   ```
-
-   Substitute the project name before running. If `pageInfo.hasNextPage` is true, repeat with `after: "<endCursor>"` on the `issues` connection and merge the nodes.
-
-3. **Why this query surfaces sub-issues:** `issues(filter: { project })` returns every open issue in the project regardless of depth — Linear flattens sub-issues into the same result set. The `parent { identifier title }` selection lets you reconstruct the tree client-side. `viewer.assignedIssues` (used by "Fetch My Issues") cannot do this because it's assignee-gated.
-
-4. **Grouping** (client-side):
-   - Bucket issues by `projectMilestone.id` (fallback bucket: "No milestone").
-   - Sort buckets by `targetDate` ascending; null `targetDate` last.
-   - Within each bucket, root issues first (no `parent`), each followed by its children indented. Orphan children — those whose `parent.identifier` is not in the open set — render at root with `(child of <parent.identifier>)` so nothing is swallowed.
-   - If the `projectMilestones` list returns a milestone that has zero open issues, still include an empty bucket for it so upcoming deadlines are visible.
-
-5. **Return format** (plain text, no JSON — Claude reads this directly):
-
-   ```
-   🎯 Ship v1 — due 2026-05-01 (3 open)
-     PEAK-100: Billing epic          [started,  @satchmo]
-       └ PEAK-101: Stripe webhook     [unstarted, @kurt]
-       └ PEAK-102: Admin refund UI    [started,  @maria]
-     PEAK-110: Landing page copy     [unstarted, @dan]
-
-   🎯 Beta feedback — due 2026-05-15 (1 open)
-     PEAK-201: Changelog page        [backlog,  —]
-
-   📋 No milestone (1 open)
-     PEAK-900: Misc cleanup          [backlog,  @satchmo]
-   ```
-
-   Use `—` for unassigned. Priority label in brackets only if priority is set (0 or null → omit). If `hasNextPage` was true and you stopped after N pages, append a `... +K more` footer.
-
-6. On API failure, report the error in one line. Do not retry.
+1. Query assigned issues: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { viewer { assignedIssues(filter: { state: { type: { in: ["started", "unstarted"] } } }, first: 20) { nodes { identifier title state { name } priority priorityLabel parent { identifier title } projectMilestone { name targetDate } children(first: 20) { nodes { state { type } } } } } } }'`
+2. Return numbered list. Each entry is one line: `<identifier>: <title> [<state>]`. Append these inline suffixes when present, in order:
+   - ` — under <parent.identifier>` when `parent` is set
+   - ` — milestone: <name> (<targetDate>)` when `projectMilestone` is set (omit the parenthesized date if `targetDate` is null)
+   - ` — +N open sub-issues` where N is the count of `children.nodes` with `state.type` in `["started","unstarted","triage","backlog"]` (omit when N is 0)
 
 ### Search Issues (Duplicate Detection)
 
