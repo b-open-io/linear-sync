@@ -23,6 +23,17 @@ MCP_JSON = Path.home() / ".claude" / "mcp.json"
 DIGEST_INTERVAL = timedelta(minutes=0)  # always fetch fresh digest on session start
 SUBPROCESS_TIMEOUT = 10  # leave headroom within 15s hook timeout
 
+# Linear workflow state types. "Active" = your in-progress personal queue;
+# "Open" = anything not yet done (used when counting work under a parent).
+ACTIVE_STATE_TYPES = ("started", "unstarted")
+OPEN_STATE_TYPES = ("started", "unstarted", "triage", "backlog")
+CHILDREN_CAP = 50  # matches GraphQL `first:` — hitting the cap renders as "N+"
+
+
+def _graphql_str_list(values):
+    """Format a tuple of strings as a GraphQL list literal (safely quoted)."""
+    return "[" + ", ".join(json.dumps(v) for v in values) + "]"
+
 
 # ── output helpers ─────────────────────────────────────────────────
 def emit(context):
@@ -242,14 +253,18 @@ def _fetch_digest(scripts_dir, mcp_server, project):
     api = os.path.join(scripts_dir, "linear-api.sh")
     if not os.path.isfile(api):
         return ""
+    active_types = _graphql_str_list(ACTIVE_STATE_TYPES)
+    open_types = _graphql_str_list(OPEN_STATE_TYPES)
+    project_literal = json.dumps(project)
     query = (
         "query { viewer { assignedIssues(filter: { "
-        f'project: {{ name: {{ eq: "{project}" }} }}, '
-        'state: { type: { in: ["started", "unstarted"] } } '
+        f"project: {{ name: {{ eq: {project_literal} }} }}, "
+        f"state: {{ type: {{ in: {active_types} }} }} "
         "}, first: 10) { nodes { identifier title state { name } priority "
         "parent { identifier title } "
         "projectMilestone { name targetDate } "
-        "children(first: 20) { nodes { state { type } } } } } } }"
+        f"children(first: {CHILDREN_CAP}, filter: {{ state: {{ type: {{ in: {open_types} }} }} }}) "
+        "{ nodes { id } } } } } }"
     )
     try:
         cmd = ["bash", api]
@@ -264,7 +279,6 @@ def _fetch_digest(scripts_dir, mcp_server, project):
         )
         if not nodes:
             return "No pending items."
-        open_states = {"started", "unstarted", "triage", "backlog"}
         lines = []
         for i in nodes:
             line = f'{i["identifier"]}: {i["title"]} [{i["state"]["name"]}]'
@@ -277,13 +291,10 @@ def _fetch_digest(scripts_dir, mcp_server, project):
                 line += f' — milestone: {milestone["name"]}'
                 if target:
                     line += f' ({target})'
-            children = (i.get("children") or {}).get("nodes") or []
-            open_children = sum(
-                1 for c in children
-                if (c.get("state") or {}).get("type") in open_states
-            )
+            open_children = len((i.get("children") or {}).get("nodes") or [])
             if open_children:
-                line += f' — +{open_children} open sub-issues'
+                count = f"{CHILDREN_CAP}+" if open_children >= CHILDREN_CAP else str(open_children)
+                line += f' — {count} open sub-issues'
             lines.append(line)
         return "\n".join(lines)
     except Exception:

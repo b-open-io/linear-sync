@@ -190,12 +190,12 @@ When the main agent asks you to set up a repo:
 
 ### Fetch Issue Summary
 
-1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "PEAK-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } parent { identifier title } projectMilestone { name targetDate } children(first: 20) { nodes { identifier title state { name type } assignee { name } } } } }'`
+1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "PEAK-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } parent { identifier title } projectMilestone { name targetDate } children(first: 50, filter: { state: { type: { in: ["started", "unstarted", "triage", "backlog"] } } }) { nodes { identifier title state { name } assignee { name } } } } }'`
 2. Check relations for "blocks" type to surface blockers.
 3. Return concise summary. When present, include:
    - **Parent**: if `parent` is set, add `Sub-issue of <parent.identifier>: <parent.title>` on its own line.
    - **Milestone**: if `projectMilestone` is set, add `Milestone: <name> (due <targetDate>)` on its own line.
-   - **Open sub-issues**: if `children.nodes` contains any whose `state.type` is in `["started","unstarted","triage","backlog"]`, list them under an `Open sub-issues:` line (one per line: `<identifier>: <title> [<state.name>, @<assignee.name or —>]`).
+   - **Open sub-issues**: if `children.nodes` is non-empty (children are already server-filtered to open states), list them under an `Open sub-issues:` line — one per line: `<identifier>: <title> [<state.name>, @<assignee.name or —>]`.
    - **Blockers**: existing behavior — warn on `relations` with `type: blocks`.
 
 ### Create Issue
@@ -209,11 +209,11 @@ When the main agent asks you to set up a repo:
 
 ### Fetch My Issues
 
-1. Query assigned issues: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { viewer { assignedIssues(filter: { state: { type: { in: ["started", "unstarted"] } } }, first: 20) { nodes { identifier title state { name } priority priorityLabel parent { identifier title } projectMilestone { name targetDate } children(first: 20) { nodes { state { type } } } } } } }'`
+1. Query assigned issues: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { viewer { assignedIssues(filter: { state: { type: { in: ["started", "unstarted"] } } }, first: 20) { nodes { identifier title state { name } priority priorityLabel parent { identifier title } projectMilestone { name targetDate } children(first: 50, filter: { state: { type: { in: ["started", "unstarted", "triage", "backlog"] } } }) { nodes { id } } } } } }'`
 2. Return numbered list. Each entry is one line: `<identifier>: <title> [<state>]`. Append these inline suffixes when present, in order:
    - ` — under <parent.identifier>` when `parent` is set
    - ` — milestone: <name> (<targetDate>)` when `projectMilestone` is set (omit the parenthesized date if `targetDate` is null)
-   - ` — +N open sub-issues` where N is the count of `children.nodes` with `state.type` in `["started","unstarted","triage","backlog"]` (omit when N is 0)
+   - ` — N open sub-issues` where N is `len(children.nodes)` (children are already server-filtered to open states; omit when N is 0). If N equals 50, render `50+` instead of the raw count to signal the cap.
 
 ### Search Issues (Duplicate Detection)
 
