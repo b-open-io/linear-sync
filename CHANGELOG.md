@@ -2,6 +2,12 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.22-alpha] - 2026-07-10
+
+### Fixed
+- Add the API agent's required display name so plugin catalogs can index it
+  instead of silently dropping it.
+
 ## [0.0.21-alpha] - 2026-04-23
 
 ### Fixed
