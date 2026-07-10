@@ -2,7 +2,7 @@
 
 > **Alpha** — This plugin is under active development. Expect rough edges, breaking changes, and incomplete docs. Feedback and issues welcome at [b-open-io/linear-sync](https://github.com/b-open-io/linear-sync/issues).
 
-A Claude Code plugin that keeps [Linear](https://linear.app) and GitHub in sync. Automatic issue tracking, branch naming, commit enforcement, PR descriptions, GitHub issue sync, and progress updates — all through natural conversation.
+A Claude Code plugin that keeps [Linear](https://linear.app) and GitHub in sync. Automatic issue tracking, branch naming, commit enforcement, PR descriptions, GitHub issue sync, and progress updates — all through natural conversation. Codex receives the portable Linear skill and an optional Linear API specialist; the hook automation remains Claude Code-only.
 
 Install via `claude plugin install linear-sync@b-open-io` (after adding the [b-open-io marketplace](https://github.com/b-open-io/claude-plugins)).
 
@@ -73,6 +73,16 @@ flowchart TB
 | **GitHub Sync Script** | `scripts/sync-github-issues.sh` | Bidirectional sync between GitHub Issues and Linear |
 | **Hook Config** | `hooks/hooks.json` | Registers all hooks with Claude Code plugin system |
 | **JSON Schema** | `schema/linear-sync.json` | Schema for the committed repo config file |
+
+### Runtime boundaries
+
+| Capability | Claude Code | Codex |
+|---|---|---|
+| Portable `linear-sync` skill | Yes | Yes |
+| Linear API specialist | `linear-sync:api` | Optional `linear_sync_api` adapter |
+| Session/prompt/commit/post-push hooks | Yes | No |
+| Hook-based auto-approval | Yes | No |
+| Runtime state | `~/.claude/linear-sync/state.json` | `${CODEX_HOME:-~/.codex}/linear-sync/state.json` |
 
 ### Session Lifecycle
 
@@ -281,6 +291,29 @@ flowchart TD
 - Hooks inject minimal context strings, not raw API data
 
 ## Installation
+
+### Codex Plugin
+
+```bash
+codex plugin marketplace add b-open-io/linear-sync --ref master
+codex plugin add linear-sync@b-open-io
+```
+
+The Codex plugin exposes the portable `linear-sync` skill. It does **not** run
+Claude Code's session-start, prompt, commit-guard, post-push, or auto-approval
+hooks. Codex plugin installation also does not silently add a custom agent.
+
+To add the optional Linear Sync API specialist, explicitly invoke the
+`codex-agent-setup` skill after installing the plugin. It installs
+`linear-sync-api.toml` as a regular file in the current project's
+`.codex/agents/` directory by default; request user scope only when intended.
+Start a new Codex session, then invoke runtime agent `linear_sync_api`.
+
+The adapter prefers `.codex/linear-sync.json`, keeps Codex-local state under
+`${CODEX_HOME:-~/.codex}/linear-sync/state.json`, and reads legacy Claude config
+only as a compatibility/migration fallback. It never guesses workspace routing
+or exposes credentials. The existing `linear-api.sh` wrapper and pre-existing
+local credential routing are still required for API calls.
 
 ### Prerequisites
 

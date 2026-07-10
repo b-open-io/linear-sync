@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "generator_schema_version": "1",
+  "manager": "linear-sync",
+  "agents": [
+    {
+      "source_name": "api",
+      "source_path": "agents/api.md",
+      "source_hash": "sha256:3e0a63e69c3594b8a38395589ff793b25072be7a925658bfdeb5b1929998b5cb",
+      "generated_file": "linear-sync-api.toml",
+      "generated_hash": "sha256:2143462e39abd07b46fa186a55fa841f95e153124ecd7e6237d3a66128c371f7",
+      "agent_name": "linear_sync_api",
+      "default_install": true
+    }
+  ]
+}

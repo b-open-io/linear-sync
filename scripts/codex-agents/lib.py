@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Deterministic generation and safe installation helpers for Linear Sync on Codex."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import shutil
+import tempfile
+import tomllib
+from pathlib import Path
+from typing import Any
+
+AGENT_FILE = "linear-sync-api.toml"
+AGENT_NAME = "linear_sync_api"
+MANIFEST_FILE = "manifest.json"
+OWNERSHIP_FILE = ".linear-sync-agents.json"
+SOURCE_FILE = "agents/api.md"
+SCHEMA_VERSION = "1"
+
+CODEX_PRELUDE = """# Codex compatibility prelude (Linear Sync)
+
+You are running as the Codex custom-agent adapter for Linear Sync API. Preserve
+the role, safety constraints, task procedures, and concise output style in the
+canonical prompt below, except where this compatibility prelude explicitly
+overrides Claude-only runtime assumptions.
+
+## Authoritative runtime translation
+
+- Accept `scripts_dir: /absolute/path/to/scripts` from the delegating Codex
+  session and use `<scripts_dir>/linear-api.sh`. Validate that it is a regular
+  file before use. If it is absent, resolve the newest installed Linear Sync
+  plugin cache beneath `${CODEX_HOME:-~/.codex}/plugins/cache/` and select only
+  a regular `linear-sync/*/scripts/linear-api.sh` candidate. If resolution is
+  ambiguous or fails, return a concise error; never guess a path.
+- Resolve shared repo configuration from `.codex/linear-sync.json` first, then
+  read `.claude/linear-sync.json` only as a compatibility fallback. When Codex
+  creates or updates repo configuration, write `.codex/linear-sync.json`.
+- Codex-local routing and mutable state live at
+  `${CODEX_HOME:-~/.codex}/linear-sync/state.json`. You may read legacy
+  `~/.claude/linear-sync/state.json` once to migrate missing non-secret routing
+  fields, but never write legacy Claude state from Codex and never overwrite
+  existing Codex state with legacy values.
+- Use the filesystem, editing, and shell capabilities actually exposed by the
+  current Codex session. References below to Claude `Read`, `Write`, `Bash`,
+  `AskUserQuestion`, background notification, MCP tool names, or model routing
+  describe intent, not literal Codex tool names.
+- `linear-api.sh` remains the only allowed Linear API transport. Pass the
+  explicitly supplied or safely resolved `mcp_server` as its first argument.
+  The wrapper may depend on pre-existing local credential routing. Never print,
+  copy, migrate, infer, or expose an API key or credential file.
+- Never guess a Linear workspace, workspace server, project, team, or label.
+  If routing is absent or ambiguous, return the choices or error to the
+  delegating Codex session for user resolution.
+- Claude-only hooks do not run in Codex. Do not claim that session-start,
+  commit enforcement, prompt detection, post-push sync, or auto-approval hooks
+  are active. Perform only the API/config task explicitly delegated to you.
+- Claude model selection is informational. Inherit the Codex session model.
+
+These rules take precedence over conflicting Claude-only instructions below.
+
+---
+"""
+
+
+def sha256(data: bytes) -> str:
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    return sha256(path.read_bytes())
+
+
+def plugin_root(start: Path | None = None) -> Path:
+    env = os.environ.get("LINEAR_SYNC_PLUGIN_ROOT") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        root = Path(env).expanduser().resolve()
+        if (root / SOURCE_FILE).is_file():
+            return root
+        raise SystemExit(f"Linear Sync plugin root is invalid: {root}")
+    here = (start or Path(__file__)).resolve()
+    for parent in [here, *here.parents]:
+        if (parent / SOURCE_FILE).is_file():
+            return parent
+    raise SystemExit("Could not locate the Linear Sync plugin root")
+
+
+def parse_source(path: Path) -> dict[str, str]:
+    raw = path.read_text(encoding="utf-8")
+    match = re.match(r"\A---\r?\n(.*?)\r?\n---\r?\n(.*)\Z", raw, re.DOTALL)
+    if not match:
+        raise ValueError(f"{path}: invalid agent frontmatter")
+    frontmatter, body = match.groups()
+    fields: dict[str, str] = {}
+    for line in frontmatter.splitlines():
+        field = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
+        if field:
+            key, value = field.groups()
+            fields[key] = value.strip().strip("\"'")
+    if not fields.get("name") or not fields.get("description"):
+        raise ValueError(f"{path}: name and description are required")
+    return {"raw": raw, "name": fields["name"], "description": fields["description"], "body": body}
+
+
+def toml_multiline(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
+    return '"""' + escaped + '"""'
+
+
+def generated_text(source: dict[str, str]) -> str:
+    source_hash = sha256(source["raw"].encode())
+    instructions = CODEX_PRELUDE + "\n" + source["body"]
+    return (
+        "# Generated by scripts/codex-agents/generate.py — DO NOT EDIT BY HAND\n"
+        f"# source: {SOURCE_FILE}\n"
+        f"# source_hash: {source_hash}\n"
+        f"# generator_schema_version: {SCHEMA_VERSION}\n\n"
+        f'name = "{AGENT_NAME}"\n'
+        f'description = {toml_multiline(source["description"])}\n'
+        f'developer_instructions = {toml_multiline(instructions)}\n'
+    )
+
+
+def build(root: Path) -> tuple[str, dict[str, Any]]:
+    source = parse_source(root / SOURCE_FILE)
+    text = generated_text(source)
+    entry = {
+        "source_name": source["name"],
+        "source_path": SOURCE_FILE,
+        "source_hash": sha256(source["raw"].encode()),
+        "generated_file": AGENT_FILE,
+        "generated_hash": sha256(text.encode()),
+        "agent_name": AGENT_NAME,
+        "default_install": True,
+    }
+    manifest = {
+        "schema_version": "1",
+        "generator_schema_version": SCHEMA_VERSION,
+        "manager": "linear-sync",
+        "agents": [entry],
+    }
+    return text, manifest
+
+
+def json_text(value: Any) -> str:
+    return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
+
+
+def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_name, path)
+    finally:
+        Path(temp_name).unlink(missing_ok=True)
+
+
+def atomic_copy(source: Path, target: Path) -> None:
+    atomic_write(target, source.read_text(encoding="utf-8"))
+
+
+def load_json(path: Path, default: Any) -> Any:
+    if not path.is_file():
+        return default
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def validate_adapter(path: Path) -> None:
+    with path.open("rb") as handle:
+        parsed = tomllib.load(handle)
+    if parsed.get("name") != AGENT_NAME:
+        raise ValueError(f"{path}: unexpected agent name")
+
+
+def quarantine(path: Path, target_dir: Path) -> Path:
+    trash = target_dir / ".linear-sync-agents-trash" / "quarantine"
+    trash.mkdir(parents=True, exist_ok=True)
+    destination = trash / path.name
+    counter = 1
+    while destination.exists() or destination.is_symlink():
+        destination = trash / f"{path.name}.{counter}"
+        counter += 1
+    shutil.move(path, destination)
+    return destination

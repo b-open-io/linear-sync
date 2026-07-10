@@ -11,6 +11,30 @@
 
 ## Install
 
+### Codex Plugin
+
+```bash
+codex plugin marketplace add b-open-io/linear-sync --ref master
+codex plugin add linear-sync@b-open-io
+```
+
+This installs the portable skill, not Claude Code's hooks. Session-start setup,
+commit/branch enforcement, prompt detection, post-push sync, and hook-based
+auto-approval remain Claude Code-only.
+
+The optional Linear API custom agent requires an explicit setup request. Invoke
+the installed `codex-agent-setup` skill to copy `linear-sync-api.toml` into the
+current project's `.codex/agents/` directory, or explicitly request user scope.
+The installer writes a regular file, preserves unrelated agents, and does not
+edit global Codex configuration. Start a new Codex session after installation
+and invoke it with runtime ID `linear_sync_api`.
+
+For Codex, use `.codex/linear-sync.json` as the repo config and
+`${CODEX_HOME:-~/.codex}/linear-sync/state.json` for local routing/state. The
+adapter may read legacy Claude state only to migrate missing non-secret routing
+values. API access still uses `linear-api.sh`; provide `scripts_dir` and
+`mcp_server` when delegating. Never put API keys in prompts or repo config.
+
 ### Via Plugin (Recommended)
 
 Add the b-open-io marketplace (one-time):

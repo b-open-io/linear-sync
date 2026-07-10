@@ -1,0 +1,33 @@
+{
+  "name": "linear-sync",
+  "version": "0.0.23-alpha",
+  "description": "Linear API workflows with a portable skill and optional Linear Sync API custom agent for Codex",
+  "author": {
+    "name": "rohenaz",
+    "url": "https://github.com/rohenaz"
+  },
+  "repository": "https://github.com/b-open-io/linear-sync",
+  "keywords": [
+    "linear",
+    "github",
+    "sync",
+    "issue-tracking",
+    "agents",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "linear-sync",
+    "shortDescription": "Linear API workflows for Codex.",
+    "longDescription": "Portable Linear workflow guidance plus an explicit installer for the optional Linear Sync API Codex custom agent. Claude hook automation is not included in Codex.",
+    "developerName": "b-open-io",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Skills"
+    ],
+    "websiteURL": "https://github.com/b-open-io/linear-sync",
+    "defaultPrompt": [
+      "Help me work safely with Linear from Codex."
+    ]
+  }
+}
