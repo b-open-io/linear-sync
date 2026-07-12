@@ -63,7 +63,7 @@ The local state file (`~/.claude/scripts/linear-repo-links.json`) **no longer st
     }
   },
   "github_org_defaults": {
-    "b-open-io": "crystalpeak"
+    "b-open-io": "acme"
   }
 }
 ```

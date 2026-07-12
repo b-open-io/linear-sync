@@ -6,9 +6,9 @@
     {
       "source_name": "api",
       "source_path": "agents/api.md",
-      "source_hash": "sha256:3e0a63e69c3594b8a38395589ff793b25072be7a925658bfdeb5b1929998b5cb",
+      "source_hash": "sha256:9c49c47d070867db3994403c10ae2e6e4080872c41c29e9f889c63e5b971792f",
       "generated_file": "linear-sync-api.toml",
-      "generated_hash": "sha256:2143462e39abd07b46fa186a55fa841f95e153124ecd7e6237d3a66128c371f7",
+      "generated_hash": "sha256:8133c4522d784f25677c4bb7389ed790e46576d87634d35cafbd6fbb1d7b5b99",
       "agent_name": "linear_sync_api",
       "default_install": true
     }

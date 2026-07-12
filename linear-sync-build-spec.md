@@ -67,7 +67,7 @@ After setup it looks like:
     },
     "b-open-io": {
       "name": "b-open-io",
-      "linear_api_key_env": "LINEAR_API_KEY_CRYSTALPEAK",
+      "linear_api_key_env": "LINEAR_API_KEY_ACME",
       "github_org": "b-open-io",
       "default_team": "CP"
     }

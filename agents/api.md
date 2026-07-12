@@ -37,7 +37,7 @@ The local state file is always needed for **workspace credential routing** (whic
 **Use `linear-api.sh` for all Linear operations.** MCP tools are NOT available to subagents — do not attempt to use them. **NEVER use raw `curl` calls** — always use `linear-api.sh` which handles authentication and auto-approval automatically.
 
 ### MCP server name resolution
-The delegation prompt from the main agent **must** include `mcp_server` (e.g., `mcp_server: linear-crystalpeak`).
+The delegation prompt from the main agent **must** include `mcp_server` (e.g., `mcp_server: linear-acme`).
 Use this as the first argument to `linear-api.sh`.
 
 If `mcp_server` is missing from the delegation prompt:
@@ -56,12 +56,12 @@ The script reads API keys from `~/.claude/mcp.json` internally. **NEVER set envi
 # Server name is ALWAYS the first arg — NEVER omit it
 bash /path/to/scripts/linear-api.sh <server-name> 'query { viewer { id name } }'
 
-# Example with linear-crystalpeak
-bash /path/to/scripts/linear-api.sh linear-crystalpeak 'query { teams { nodes { id name key } } }'
+# Example with linear-acme
+bash /path/to/scripts/linear-api.sh linear-acme 'query { teams { nodes { id name key } } }'
 
 # With GraphQL variables (for mutations with user-provided text)
 QUERY=$(printf 'mutation($input: IssueCreateInput%s) { issueCreate(input: $input) { issue { id identifier title } } }' '!')
-bash /path/to/scripts/linear-api.sh linear-crystalpeak "$QUERY" '{"input": {"teamId": "TEAM_ID", "title": "My Title"}}'
+bash /path/to/scripts/linear-api.sh linear-acme "$QUERY" '{"input": {"teamId": "TEAM_ID", "title": "My Title"}}'
 ```
 
 **Bang escaping**: The Bash tool escapes `!` to `\!` even inside single quotes. Always use `printf` on a separate line (not chained with `&&`) to inject `!` safely. Queries without `!` can use normal single-line syntax.
@@ -167,7 +167,7 @@ Example operations:
 When the main agent asks you to set up a repo:
 
 1. Check workspace cache. Use cached data if fresh. Otherwise fetch and update cache.
-2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "b-open-io" → "linear-crystalpeak"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
+2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "b-open-io" → "linear-acme"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
 3. Return the list to the main agent as a concise formatted list.
 4. After the main agent tells you what the dev picked:
    a. Verify/create the label.
@@ -185,13 +185,13 @@ When the main agent asks you to set up a repo:
       ```
    c. Read and update the local state file with workspace routing.
    d. Create a setup issue following the **Create Issue** task below (title: "Set up Linear sync configuration", status: In Progress, with repo label).
-   e. Commit the repo config file with the issue ID in the message (e.g., `PEAK-123: add Linear sync config`).
+   e. Commit the repo config file with the issue ID in the message (e.g., `ENG-123: add Linear sync config`).
    f. **Push the commit** (`git push`). This is critical — other devs need the committed config.
 5. Confirm: "Linked <repo> to <project> in <workspace> with label <label>."
 
 ### Fetch Issue Summary
 
-1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "PEAK-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } parent { identifier title } projectMilestone { name targetDate } children(first: 50, filter: { state: { type: { in: ["started", "unstarted", "triage", "backlog"] } } }) { nodes { identifier title state { name } assignee { name } } } } }'`
+1. Query the issue via `linear-api.sh`: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { issue(id: "ENG-123") { id identifier title description state { name type } assignee { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier title } } } parent { identifier title } projectMilestone { name targetDate } children(first: 50, filter: { state: { type: { in: ["started", "unstarted", "triage", "backlog"] } } }) { nodes { identifier title state { name } assignee { name } } } } }'`
 2. Check relations for "blocks" type to surface blockers.
 3. Return concise summary. When present, include:
    - **Parent**: if `parent` is set, add `Sub-issue of <parent.identifier>: <parent.title>` on its own line.
@@ -202,7 +202,7 @@ When the main agent asks you to set up a repo:
 ### Create Issue
 
 1. Check workspace cache. Use cached IDs if fresh.
-2. Query workflow states to find "In Progress": `bash "$API_SCRIPT" "$MCP_SERVER" 'query { workflowStates(filter: { team: { key: { eq: "PEAK" } } }) { nodes { id name type } } }'`
+2. Query workflow states to find "In Progress": `bash "$API_SCRIPT" "$MCP_SERVER" 'query { workflowStates(filter: { team: { key: { eq: "ENG" } } }) { nodes { id name type } } }'`
 3. Create issue via mutation (use printf for the `!` in type): `QUERY=$(printf 'mutation($input: IssueCreateInput%s) { issueCreate(input: $input) { issue { id identifier title } } }' '!')` then `bash "$API_SCRIPT" "$MCP_SERVER" "$QUERY" '{"input": {...}}'`
 4. If priority specified (0-4), include it.
 5. Save as `last_issue` and `last_issue_title` in state file.
@@ -223,7 +223,7 @@ When the main agent asks you to set up a repo:
 
 ### Fetch Active Cycle
 
-1. Query active cycle: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { cycles(filter: { team: { key: { eq: "PEAK" } }, isActive: { eq: true } }) { nodes { id name startsAt endsAt } } }'`
+1. Query active cycle: `bash "$API_SCRIPT" "$MCP_SERVER" 'query { cycles(filter: { team: { key: { eq: "ENG" } }, isActive: { eq: true } }) { nodes { id name startsAt endsAt } } }'`
 2. Return cycle info or "No active cycle."
 
 ## Error Handling

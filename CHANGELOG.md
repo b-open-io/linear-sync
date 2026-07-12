@@ -2,6 +2,12 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.25-alpha] - 2026-07-12
+
+### Fixed
+- Purged crystal-peak-era hardcoded org names: docs, specs, agent prompts, the linear-sync skill, and test fixtures now use generic placeholders (`linear-acme`, `ENG-123`) instead of `linear-crystalpeak` / `PEAK-123`. The repo never hardcodes real org names — only a selected `.claude/linear-sync.json` carries them.
+- Repo's own `.claude/linear-sync.json`: replaced stale `team: PEAK` (missed by the OPL-803 rebrand) with `OPL`, pointed `workspace` at a real state-file entry, and dropped the nonexistent "Linear Sync" project.
+
 ## [0.0.24-alpha] - 2026-07-12
 
 ### Added

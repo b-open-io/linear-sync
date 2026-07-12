@@ -11,7 +11,7 @@
 #              Auto-detected from .claude/linear-sync.json + state file if omitted.
 #              Fails with error if auto-detection is impossible — no silent defaults.
 #              For multi-workspace setups, use the workspace-specific server name
-#              (e.g., "linear-opl", "linear-crystalpeak")
+#              (e.g., "linear-opl", "linear-acme")
 #
 # When a variables JSON object is provided as the last argument, it is included
 # in the request body alongside the query. This avoids inline string interpolation

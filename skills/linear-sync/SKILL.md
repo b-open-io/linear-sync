@@ -34,7 +34,7 @@ When the hook injects config context for a linked repo:
 If the hook context includes `last_issue: <ISSUE_ID>`, offer to resume that issue first:
 
 Use AskUserQuestion: "What are you working on today in <repo>?"
-1. **"Resume <ISSUE_ID>: <title>"** (use the title from hook context if available, e.g. "Resume PEAK-153: modernize plugin to use native Linear MCP tools") — Delegate to `linear-sync:api` subagent **(background)** to fetch the issue summary. **Include `mcp_server` and `scripts_dir` from hook context in the delegation prompt** (see Execution Model). After fetching, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
+1. **"Resume <ISSUE_ID>: <title>"** (use the title from hook context if available, e.g. "Resume ENG-153: modernize plugin to use native Linear MCP tools") — Delegate to `linear-sync:api` subagent **(background)** to fetch the issue summary. **Include `mcp_server` and `scripts_dir` from hook context in the delegation prompt** (see Execution Model). After fetching, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
 2. **"Work on a different issue"** — Delegate to `linear-sync:api` subagent **(background)** to fetch the dev's assigned in-progress issues ("Fetch My Issues" task). **Include `mcp_server` and `scripts_dir` from hook context.** Present the returned list as AskUserQuestion choices, plus an option to "Enter an issue ID manually". After selection, save `last_issue` and `last_issue_title` for this repo (direct Read/Write). Check for blockers in the response and warn if any.
 3. **"Start something new"** — Ask for a one-line description via AskUserQuestion. Check for duplicates first (see Duplicate Detection below). Then delegate to `linear-sync:api` subagent (foreground) to create a ticket in the correct project with the repo label. **Include `mcp_server` and `scripts_dir` from hook context.** After creation, offer to assign to current cycle (see Cycle Assignment below). Use the returned issue ID going forward.
 4. **"Just exploring / no ticket needed"** — Proceed normally. The commit guard hook will catch untagged commits later and you can offer to create a ticket at that point.
@@ -235,7 +235,7 @@ For fire-and-forget mutations the main agent handles directly using `mcp__<serve
 - **Status change**: `mcp__<server>__update_issue` with `stateId`
 - **Quick fetch**: `mcp__<server>__get_issue` for compact inline results
 
-Determine `<server>` from the `mcp_server` field in session-start context (e.g., `mcp_server: linear-crystalpeak`). **NEVER default to `linear`** — using the wrong server routes to the wrong workspace. If `mcp_server` is missing from hook context, read `~/.claude/linear-sync/state.json`, find the workspace for the current repo, and use its `mcp_server` field. If still missing, delegate to the `linear-sync:api` subagent (foreground) to resolve it. These are auto-approved MCP tool calls — no permission prompts needed.
+Determine `<server>` from the `mcp_server` field in session-start context (e.g., `mcp_server: linear-acme`). **NEVER default to `linear`** — using the wrong server routes to the wrong workspace. If `mcp_server` is missing from hook context, read `~/.claude/linear-sync/state.json`, find the workspace for the current repo, and use its `mcp_server` field. If still missing, delegate to the `linear-sync:api` subagent (foreground) to resolve it. These are auto-approved MCP tool calls — no permission prompts needed.
 
 ### Tier 2: Background subagent (`linear-sync:api`)
 For multi-step operations where the main agent doesn't need the result immediately. Subagent uses MCP tools internally, returns concise 1-3 line summaries:
@@ -260,7 +260,7 @@ bash "$SCRIPTS_DIR/linear-api.sh" server-name "$QUERY" '{"input": {"issueId": ".
 ```
 **CRITICAL**: Put each variable assignment and the `bash` call on **separate lines** — never chain with `&&`. The auto-approve hook validates each line independently and rejects `&&`/`||`/`;` chains. Using `&&` will cause the user to see a manual approval prompt.
 
-**When delegating to the subagent**, always include the `mcp_server` and `scripts_dir` from the session-start hook context in your prompt so the subagent knows which MCP server to use and where `linear-api.sh` is for fallback. Example: "Fetch issue summary for PEAK-123. mcp_server: linear-crystalpeak, scripts_dir: /path/to/scripts"
+**When delegating to the subagent**, always include the `mcp_server` and `scripts_dir` from the session-start hook context in your prompt so the subagent knows which MCP server to use and where `linear-api.sh` is for fallback. Example: "Fetch issue summary for ENG-123. mcp_server: linear-acme, scripts_dir: /path/to/scripts"
 
 ### Parallel execution
 **Always batch independent operations in the same message.** Claude can make multiple tool calls simultaneously when they don't depend on each other. Key patterns:

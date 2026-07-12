@@ -395,7 +395,7 @@ For multiple workspaces, export a separate variable per workspace and reference 
 ```bash
 # ~/.zshrc
 export LINEAR_API_KEY_OPL="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-export LINEAR_API_KEY_CRYSTALPEAK="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export LINEAR_API_KEY_ACME="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 ```json
@@ -407,11 +407,11 @@ export LINEAR_API_KEY_CRYSTALPEAK="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       "args": ["-y", "@anthropic/linear-mcp-server"],
       "env": { "LINEAR_API_KEY": "$LINEAR_API_KEY_OPL" }
     },
-    "linear-crystalpeak": {
+    "linear-acme": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@anthropic/linear-mcp-server"],
-      "env": { "LINEAR_API_KEY": "$LINEAR_API_KEY_CRYSTALPEAK" }
+      "env": { "LINEAR_API_KEY": "$LINEAR_API_KEY_ACME" }
     }
   }
 }
@@ -522,9 +522,9 @@ The `.claude/linear-sync.json` file committed to each repo:
 {
   "$schema": "https://raw.githubusercontent.com/b-open-io/linear-sync/main/schema/linear-sync.json",
   "_warning": "AUTO-MANAGED by linear-sync. Manual edits may break issue sync.",
-  "workspace": "crystalpeak",
+  "workspace": "acme",
   "project": "My Project",
-  "team": "PEAK",
+  "team": "ENG",
   "label": "repo:my-repo",
   "github_org": "b-open-io"
 }
@@ -544,9 +544,9 @@ For teams with shared conventions, commit a `.linear-sync-template.json` to the 
 
 ```json
 {
-  "workspace": "crystalpeak",
+  "workspace": "acme",
   "project": "Project Atlas",
-  "team": "PEAK",
+  "team": "ENG",
   "label": "repo:my-repo"
 }
 ```

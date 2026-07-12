@@ -101,7 +101,7 @@ setup_temp_repo() {
 {
   "workspace": "b-open-io",
   "project": "Test Project",
-  "team": "PEAK",
+  "team": "ENG",
   "label": "repo:test-repo"
 }
 REPOCFG
@@ -114,7 +114,7 @@ setup_temp_state() {
   "workspaces": {
     "b-open-io": {
       "name": "b-open-io",
-      "mcp_server": "linear-crystalpeak"
+      "mcp_server": "linear-acme"
     }
   },
   "repos": {
@@ -147,7 +147,7 @@ GUARD_CWD="$TEMP_DIR/test-repo"
 section "Commit Guard: Commits"
 
 # Test commit with issue ID
-INPUT=$(hook_input 'git commit -m "PEAK-123: fix bug"' "$GUARD_CWD")
+INPUT=$(hook_input 'git commit -m "ENG-123: fix bug"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -168,8 +168,8 @@ else
   fail "commit without issue ID should be blocked (exit 2)" "exit=$EXIT_CODE output=$OUTPUT"
 fi
 
-# Test commit with heredoc (HEREDOC contains PEAK-456)
-HEREDOC_CMD=$(printf 'git commit -m "$(cat <<'\''EOF'\''\nPEAK-456: add feature\n\nDetailed description\nEOF\n)"')
+# Test commit with heredoc (HEREDOC contains ENG-456)
+HEREDOC_CMD=$(printf 'git commit -m "$(cat <<'\''EOF'\''\nENG-456: add feature\n\nDetailed description\nEOF\n)"')
 INPUT=$(hook_input "$HEREDOC_CMD" "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -206,7 +206,7 @@ fi
 section "Commit Guard: Branches"
 
 # Test branch creation with issue ID
-INPUT=$(hook_input 'git checkout -b PEAK-100-new-feature' "$GUARD_CWD")
+INPUT=$(hook_input 'git checkout -b ENG-100-new-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -228,7 +228,7 @@ else
 fi
 
 # Test switch -c with issue ID
-INPUT=$(hook_input 'git switch -c PEAK-200-feature' "$GUARD_CWD")
+INPUT=$(hook_input 'git switch -c ENG-200-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -242,7 +242,7 @@ fi
 section "Commit Guard: Branch Renames"
 
 # Test branch rename with issue ID
-INPUT=$(hook_input 'git branch -m old-branch PEAK-300-new-name' "$GUARD_CWD")
+INPUT=$(hook_input 'git branch -m old-branch ENG-300-new-name' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -264,7 +264,7 @@ else
 fi
 
 # Test branch -M (force rename) with issue ID
-INPUT=$(hook_input 'git branch -M PEAK-400-force-rename' "$GUARD_CWD")
+INPUT=$(hook_input 'git branch -M ENG-400-force-rename' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -278,7 +278,7 @@ fi
 section "Commit Guard: Push & PR"
 
 # Test git push
-INPUT=$(hook_input 'git push -u origin PEAK-100-feature' "$GUARD_CWD")
+INPUT=$(hook_input 'git push -u origin ENG-100-feature' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -289,7 +289,7 @@ else
 fi
 
 # Test PR with issue ID in title
-INPUT=$(hook_input 'gh pr create --title "PEAK-100: Add feature" --body "desc"' "$GUARD_CWD")
+INPUT=$(hook_input 'gh pr create --title "ENG-100: Add feature" --body "desc"' "$GUARD_CWD")
 RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -486,7 +486,7 @@ unset STATE_FILE_OVERRIDE
 section "API Allow: Simple Calls"
 
 # Simple API call
-INPUT=$(hook_input 'bash /path/to/scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\''' "$REPO_ROOT")
+INPUT=$(hook_input 'bash /path/to/scripts/linear-api.sh linear-acme '\''query { viewer { id } }'\''' "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -497,7 +497,7 @@ else
 fi
 
 # API call with quoted path
-INPUT=$(hook_input 'bash "/path/to/scripts/linear-api.sh" linear-crystalpeak '\''query { viewer { id } }'\''' "$REPO_ROOT")
+INPUT=$(hook_input 'bash "/path/to/scripts/linear-api.sh" linear-acme '\''query { viewer { id } }'\''' "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
 OUTPUT="${RESULT#*|}"
@@ -510,7 +510,7 @@ fi
 # ==========================================================================
 section "API Allow: Variable Assignments + API Call"
 
-CMD=$(printf 'SCRIPTS_DIR="/path/to/scripts"\nQUERY=$(printf '\''mutation($input: CommentCreateInput%%s) { commentCreate(input: $input) { comment { id } } }'\'' '\''!'\''  )\nbash "$SCRIPTS_DIR/linear-api.sh" linear-crystalpeak "$QUERY" '\''{"input": {"issueId": "id", "body": "text"}}'\''')
+CMD=$(printf 'SCRIPTS_DIR="/path/to/scripts"\nQUERY=$(printf '\''mutation($input: CommentCreateInput%%s) { commentCreate(input: $input) { comment { id } } }'\'' '\''!'\''  )\nbash "$SCRIPTS_DIR/linear-api.sh" linear-acme "$QUERY" '\''{"input": {"issueId": "id", "body": "text"}}'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -564,7 +564,7 @@ fi
 section "API Allow: Indirect Variable (ls glob + bash \$VAR)"
 
 # Exact pattern from api.md agent: resolve script path via ls, then call via variable
-CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-crystalpeak '\''query { viewer { id } }'\''')
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-acme '\''query { viewer { id } }'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -576,7 +576,7 @@ else
 fi
 
 # With echo debug line in between
-CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\necho "Script: $API_SCRIPT"\nbash "$API_SCRIPT" linear-crystalpeak '\''query { viewer { id } }'\''')
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\necho "Script: $API_SCRIPT"\nbash "$API_SCRIPT" linear-acme '\''query { viewer { id } }'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -588,7 +588,7 @@ else
 fi
 
 # With multiline GraphQL query
-CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-crystalpeak '\''query {\n  issues(first: 10) {\n    nodes { id title }\n  }\n}'\''')
+CMD=$(printf 'API_SCRIPT=$(ls ~/.claude/plugins/cache/b-open-io/linear-sync/*/scripts/linear-api.sh 2>/dev/null | sort -V | tail -1)\nbash "$API_SCRIPT" linear-acme '\''query {\n  issues(first: 10) {\n    nodes { id title }\n  }\n}'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -614,7 +614,7 @@ fi
 # ==========================================================================
 section "API Allow: Heredoc Patterns"
 
-CMD=$(printf 'QUERY=$(cat <<'\''EOF'\''\nquery { viewer { id name } }\nEOF\n)\nbash /path/to/scripts/linear-api.sh linear-crystalpeak "$QUERY"')
+CMD=$(printf 'QUERY=$(cat <<'\''EOF'\''\nquery { viewer { id name } }\nEOF\n)\nbash /path/to/scripts/linear-api.sh linear-acme "$QUERY"')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -628,7 +628,7 @@ fi
 # ==========================================================================
 section "API Allow: cd && bash Pattern"
 
-CMD='cd /Users/test/.claude/plugins/cache/b-open-io/linear-sync/0.0.9-alpha && bash scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\'''
+CMD='cd /Users/test/.claude/plugins/cache/b-open-io/linear-sync/0.0.9-alpha && bash scripts/linear-api.sh linear-acme '\''query { viewer { id } }'\'''
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -706,7 +706,7 @@ fi
 section "API Allow: Multiline Single-Quoted Query"
 
 # This is the exact pattern the subagent generates — GraphQL query spans multiple lines
-CMD=$(printf "bash /path/to/scripts/linear-api.sh linear-crystalpeak 'query {\n  issues(filter: {\n    project: { name: { eq: \"Dan Test\" } }\n    state: { type: { in: [\"unstarted\", \"started\"] } }\n  }, first: 50) {\n    nodes { id identifier title }\n  }\n}'")
+CMD=$(printf "bash /path/to/scripts/linear-api.sh linear-acme 'query {\n  issues(filter: {\n    project: { name: { eq: \"Dan Test\" } }\n    state: { type: { in: [\"unstarted\", \"started\"] } }\n  }, first: 50) {\n    nodes { id identifier title }\n  }\n}'")
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -718,7 +718,7 @@ else
 fi
 
 # cd && bash with multiline query
-CMD=$(printf "cd /path/to/plugin && bash scripts/linear-api.sh linear-crystalpeak 'query {\n  viewer { id name }\n}'")
+CMD=$(printf "cd /path/to/plugin && bash scripts/linear-api.sh linear-acme 'query {\n  viewer { id name }\n}'")
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -732,7 +732,7 @@ fi
 # ==========================================================================
 section "API Allow: find in .claude Paths"
 
-CMD=$(printf 'find ~/.claude/linear-sync -name "*.json"\nbash /path/to/scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\''')
+CMD=$(printf 'find ~/.claude/linear-sync -name "*.json"\nbash /path/to/scripts/linear-api.sh linear-acme '\''query { viewer { id } }'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -746,7 +746,7 @@ fi
 # ==========================================================================
 section "API Allow: Env Var Prefix"
 
-CMD='MCP_SERVER="linear-crystalpeak" bash /path/to/scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\'''
+CMD='MCP_SERVER="linear-acme" bash /path/to/scripts/linear-api.sh linear-acme '\''query { viewer { id } }'\'''
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -760,7 +760,7 @@ fi
 # ==========================================================================
 section "API Allow: Shell Builtins"
 
-CMD=$(printf 'set +H\nexport SCRIPTS_DIR="/path/to/scripts"\nbash "$SCRIPTS_DIR/linear-api.sh" linear-crystalpeak '\''query { viewer { id } }'\''')
+CMD=$(printf 'set +H\nexport SCRIPTS_DIR="/path/to/scripts"\nbash "$SCRIPTS_DIR/linear-api.sh" linear-acme '\''query { viewer { id } }'\''')
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -775,7 +775,7 @@ fi
 section "API Allow: Injection Attempts (should NOT allow)"
 
 # Chained dangerous command
-CMD='bash /path/to/scripts/linear-api.sh linear-crystalpeak '\''query { viewer { id } }'\'' && rm -rf /'
+CMD='bash /path/to/scripts/linear-api.sh linear-acme '\''query { viewer { id } }'\'' && rm -rf /'
 INPUT=$(hook_input "$CMD" "$REPO_ROOT")
 RESULT=$(run_hook "$API_ALLOW" "$INPUT")
 EXIT_CODE="${RESULT%%|*}"
@@ -961,10 +961,10 @@ with open(state_path) as f:
 mcp_server = state.get('workspaces', {}).get(workspace, {}).get('mcp_server', '')
 print(mcp_server)
 " 2>/dev/null || echo "FAILED")
-if [ "$RESULT" = "linear-crystalpeak" ]; then
+if [ "$RESULT" = "linear-acme" ]; then
   pass "resolve_server finds mcp_server from repo config + state"
 else
-  fail "resolve_server should find linear-crystalpeak" "got: $RESULT"
+  fail "resolve_server should find linear-acme" "got: $RESULT"
 fi
 
 # Test: missing config should fail
@@ -994,7 +994,7 @@ fi
 
 # Test: explicit server name bypasses resolution
 # (just verify the arg parsing — 2-arg form with server name)
-INPUT="linear-crystalpeak"
+INPUT="linear-acme"
 IS_QUERY=$(printf '%s' "$INPUT" | python3 -c "
 import sys
 a = sys.stdin.read().strip()
