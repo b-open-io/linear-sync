@@ -1,6 +1,6 @@
 {
   "name": "linear-sync",
-  "version": "0.0.23-alpha",
+  "version": "0.0.24-alpha",
   "description": "Linear API workflows with a portable skill and optional Linear Sync API custom agent for Codex",
   "author": {
     "name": "rohenaz",

@@ -2,6 +2,11 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.24-alpha] - 2026-07-12
+
+### Added
+- `hooks/manifest.json`: authored hook metadata (name, event, matcher, runtimes, summary, description) for all six hooks so the bopen.ai hook catalog can index them alongside skills and agents.
+
 ## [0.0.22-alpha] - 2026-07-10
 
 ### Fixed

@@ -1,0 +1,59 @@
+{
+  "description": "Authored metadata for linear-sync hooks. Consumed by the bopen.ai catalog; keep in sync with hooks.json wiring.",
+  "hooks": [
+    {
+      "name": "linear-session-start",
+      "path": "hooks/scripts/linear-session-start.sh",
+      "event": "SessionStart",
+      "matcher": "startup|clear|compact",
+      "runtimes": ["claude"],
+      "summary": "Injects Linear link status and an active-issue digest at session start.",
+      "description": "Detects whether the repo is linked to Linear and injects the matching context: workspace, project, team, label, branch and commit formats, the last worked issue, stale-branch warnings, and a pre-fetched digest of assigned in-progress issues. Unregistered repos get a setup-wizard directive instead; opted-out repos stay silent."
+    },
+    {
+      "name": "linear-prompt-check",
+      "path": "hooks/scripts/linear-prompt-check.sh",
+      "event": "UserPromptSubmit",
+      "matcher": "*",
+      "runtimes": ["claude"],
+      "summary": "Surfaces Linear issue IDs mentioned in prompts.",
+      "description": "Detects issue ID references (like ENG-123) in the dev's prompt and injects a hint to fetch full issue context via the linear-sync API subagent, so the agent works from the ticket instead of guessing."
+    },
+    {
+      "name": "linear-commit-guard",
+      "path": "hooks/scripts/linear-commit-guard.sh",
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "runtimes": ["claude"],
+      "summary": "Enforces Linear issue IDs on commits, branches, and PR titles.",
+      "description": "In linked repos, blocks git commits, branch creation, and PR creation that lack a team-prefixed issue ID (like ENG-123), prompting ticket creation instead of letting untracked work through. On push it also surfaces an advisory when a branch mixes commits referencing different issues."
+    },
+    {
+      "name": "linear-api-allow",
+      "path": "hooks/scripts/linear-api-allow.sh",
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "runtimes": ["claude"],
+      "summary": "Auto-approves calls to the plugin's trusted Linear API wrapper.",
+      "description": "Validates and auto-approves Bash commands that call the plugin's own linear-api.sh wrapper — including multiline variable assignments and heredocs — so Linear queries never stall on permission prompts. Commands with shell-injection patterns or chained operators are rejected back to the normal permission flow."
+    },
+    {
+      "name": "linear-state-allow",
+      "path": "hooks/scripts/linear-state-allow.sh",
+      "event": "PreToolUse",
+      "matcher": "Read|Write|Edit|MultiEdit",
+      "runtimes": ["claude"],
+      "summary": "Auto-approves access to the plugin's state file.",
+      "description": "Auto-approves Read and Write on the ~/.claude/linear-sync/ state directory (session state, credential routing) and read-only access to the installed plugin's own scripts for debugging. Everything else falls through to the normal permission flow."
+    },
+    {
+      "name": "linear-post-push-sync",
+      "path": "hooks/scripts/linear-post-push-sync.sh",
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "runtimes": ["claude"],
+      "summary": "Syncs GitHub state to Linear after pushes and PR creation.",
+      "description": "Fires after git push or gh pr create in linked repos: runs the GitHub issue sync so Linear attachments stay current, and injects a reminder to offer a progress comment on the active Linear issue."
+    }
+  ]
+}
