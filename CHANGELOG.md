@@ -2,6 +2,12 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.27-alpha] - 2026-07-13
+
+### Fixed
+- Commit guard no longer substring-matches its trigger patterns anywhere in the command string. It now parses the command into simple commands (quote-aware, split on `&&`/`||`/`;`/`|`/newlines, leading env assignments and `cd` chains handled) and only classifies git/gh invocations actually in command position — so a non-git command (e.g. `curl`) whose JSON payload merely contains text like a branch-rename or commit command is never blocked. When parsing is ambiguous, the guard errs toward allowing with a stderr warning instead of blocking.
+- Renaming a branch TO a default branch name (`git branch -m/-M master` or `main`) is repo wiring during new-repo setup, not a feature branch, and is now exempt from the issue-ID-in-branch-name rule. Renames to any other name still require an issue ID.
+
 ## [0.0.26-alpha] - 2026-07-12
 
 ### Fixed

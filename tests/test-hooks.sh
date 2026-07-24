@@ -274,6 +274,122 @@ else
   fail "branch -M with issue ID should be allowed" "exit=$EXIT_CODE output=$OUTPUT"
 fi
 
+# Test rename TO default branch names (repo wiring, not feature branches)
+for default_branch in master main; do
+  INPUT=$(hook_input "git branch -M $default_branch" "$GUARD_CWD")
+  RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+  EXIT_CODE="${RESULT%%|*}"
+  OUTPUT="${RESULT#*|}"
+  if is_allowed "$OUTPUT"; then
+    pass "branch -M $default_branch (default branch) is allowed"
+  else
+    fail "branch -M $default_branch should be allowed (repo wiring exemption)" "exit=$EXIT_CODE output=$OUTPUT"
+  fi
+done
+
+# Rename to a real feature branch name without a ticket ID is still blocked
+INPUT=$(hook_input 'git branch -M my-feature-branch' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_blocked "$EXIT_CODE"; then
+  pass "branch -M to feature name without issue ID is still blocked"
+else
+  fail "branch -M to feature name without issue ID should be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# ==========================================================================
+section "Commit Guard: Argv Parsing (no substring false positives)"
+
+# Non-git command whose ARGUMENT contains branch-rename text must not block
+CMD='curl -s https://api.example.com/notes -H "Content-Type: application/json" -d '\''{"body":"then run git branch -M master to finish setup"}'\'''
+INPUT=$(hook_input "$CMD" "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_blocked "$EXIT_CODE"; then
+  pass "curl with branch-rename text in JSON payload is not blocked"
+else
+  fail "curl with branch-rename text in payload should NOT be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# Same for rename text WITHOUT an issue ID in the payload
+CMD='curl -s https://api.example.com/notes -d '\''{"cmd":"git branch -M some-feature"}'\'''
+INPUT=$(hook_input "$CMD" "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_blocked "$EXIT_CODE"; then
+  pass "curl with ticketless rename text in payload is not blocked"
+else
+  fail "curl with ticketless rename text in payload should NOT be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# Non-git command whose argument contains commit text must not block
+CMD='curl -s https://api.example.com/notes -d '\''{"body":"ran git commit -m fix and git push"}'\'''
+INPUT=$(hook_input "$CMD" "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_blocked "$EXIT_CODE"; then
+  pass "curl with commit text in JSON payload is not blocked"
+else
+  fail "curl with commit text in payload should NOT be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# echo quoting git text is auto-approved (safe command, argument is data)
+INPUT=$(hook_input 'echo "git branch -M whatever"' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "echo quoting git rename text is allowed"
+else
+  fail "echo quoting git rename text should be allowed" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# Real git invocations still trigger through env prefixes and cd chains
+INPUT=$(hook_input 'cd /tmp && git commit -m "no ticket here"' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_blocked "$EXIT_CODE"; then
+  pass "cd && git commit without issue ID is still blocked"
+else
+  fail "cd && git commit without issue ID should be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+INPUT=$(hook_input 'GIT_TRACE=0 git commit -m "fix bug"' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_blocked "$EXIT_CODE"; then
+  pass "env-prefixed git commit without issue ID is still blocked"
+else
+  fail "env-prefixed git commit without issue ID should be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+INPUT=$(hook_input 'GIT_TRACE=0 git commit -m "ENG-500: fix bug"' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if is_allowed "$OUTPUT"; then
+  pass "env-prefixed git commit with issue ID is allowed"
+else
+  fail "env-prefixed git commit with issue ID should be allowed" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
+# Rename buried in a chain still gets the default-branch exemption
+INPUT=$(hook_input 'git init -q && git branch -M main' "$GUARD_CWD")
+RESULT=$(run_hook "$COMMIT_GUARD" "$INPUT")
+EXIT_CODE="${RESULT%%|*}"
+OUTPUT="${RESULT#*|}"
+if ! is_blocked "$EXIT_CODE"; then
+  pass "git init && git branch -M main is not blocked"
+else
+  fail "git init && git branch -M main should not be blocked" "exit=$EXIT_CODE output=$OUTPUT"
+fi
+
 # ==========================================================================
 section "Commit Guard: Push & PR"
 
