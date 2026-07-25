@@ -37,6 +37,203 @@ if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
+# ---------- parse actual invocations (command position + argv) ----------
+# The guard used to substring-match trigger patterns (e.g. 'git branch -M')
+# anywhere in the command string, which false-positived on non-git commands
+# whose ARGUMENTS merely contained git-looking text (e.g. a curl JSON payload).
+# Parse the command into simple commands (shlex, quote-aware, split on
+# &&/||/;/|/newlines, leading env assignments stripped) and only classify
+# git/gh invocations that are actually in command position.
+# When parsing is ambiguous, err toward ALLOWING with a warning.
+PARSED=$(COMMAND="$COMMAND" python3 -c '
+import os, re, sys
+import shlex
+
+cmd = os.environ.get("COMMAND", "")
+# Shell line continuations are just whitespace.
+cmd = cmd.replace("\\\n", " ")
+
+def newlines_to_semicolons(s):
+    # Replace newlines that are OUTSIDE quotes with ";" so shlex splits
+    # multi-line commands into separate simple commands. Newlines inside
+    # quotes (heredoc-in-command-substitution, JSON payloads) are preserved.
+    out = []
+    q = None
+    esc = False
+    for ch in s:
+        if esc:
+            out.append(ch)
+            esc = False
+            continue
+        if q is None:
+            if ch == "\\":
+                out.append(ch)
+                esc = True
+            elif ch == chr(39) or ch == chr(34):
+                q = ch
+                out.append(ch)
+            elif ch == "\n":
+                out.append(";")
+            else:
+                out.append(ch)
+        elif q == chr(34):
+            if ch == "\\":
+                out.append(ch)
+                esc = True
+            else:
+                if ch == chr(34):
+                    q = None
+                out.append(ch)
+        else:
+            if ch == chr(39):
+                q = None
+            out.append(ch)
+    return "".join(out)
+
+def emit_ambiguous():
+    print("STATUS=AMBIGUOUS")
+    sys.exit(0)
+
+try:
+    prepared = newlines_to_semicolons(cmd)
+    lex = shlex.shlex(prepared, posix=True, punctuation_chars="();<>|&;")
+    lex.whitespace_split = True
+    tokens = list(lex)
+except ValueError:
+    emit_ambiguous()
+except Exception:
+    emit_ambiguous()
+
+PUNCT = set("();<>|&;")
+segments = []
+current = []
+for tok in tokens:
+    if tok and all(c in PUNCT for c in tok):
+        if current:
+            segments.append(current)
+            current = []
+    else:
+        current.append(tok)
+if current:
+    segments.append(current)
+
+ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+GIT_OPT_WITH_ARG = {"-C", "-c", "--exec-path", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
+
+def strip_prefix(words):
+    i = 0
+    while i < len(words) and ASSIGN.match(words[i]):
+        i += 1
+    while i < len(words) and words[i] in ("command", "builtin", "nohup", "exec", "time", "do", "then", "else"):
+        i += 1
+        while i < len(words) and words[i].startswith("-"):
+            i += 1
+    if i < len(words) and words[i] == "env":
+        i += 1
+        while i < len(words) and (ASSIGN.match(words[i]) or words[i].startswith("-")):
+            i += 1
+    return words[i:]
+
+def short_flag_has(flag, chars):
+    if not flag.startswith("-") or flag.startswith("--"):
+        return False
+    return any(c in flag[1:] for c in chars)
+
+out = {
+    "HAS_COMMIT": 0,
+    "HAS_PUSH": 0,
+    "HAS_RENAME": 0,
+    "RENAME_TARGET": "",
+    "HAS_BRANCH_CREATE": 0,
+    "BRANCH_NAME": "",
+    "HAS_PR_CREATE": 0,
+}
+
+def classify(words):
+    words = strip_prefix(words)
+    if not words:
+        return
+    prog = words[0].rsplit("/", 1)[-1]
+    args = words[1:]
+    if prog == "gh":
+        if len(args) >= 2 and args[0] == "pr" and args[1] == "create":
+            out["HAS_PR_CREATE"] = 1
+        return
+    if prog != "git":
+        return
+    # Skip git global options to find the subcommand.
+    i = 0
+    sub = ""
+    rest = []
+    while i < len(args):
+        a = args[i]
+        if a in GIT_OPT_WITH_ARG:
+            i += 2
+            continue
+        if a.startswith("-"):
+            i += 1
+            continue
+        sub = a
+        rest = args[i + 1:]
+        break
+    if not sub:
+        return
+    if sub == "commit":
+        out["HAS_COMMIT"] = 1
+    elif sub == "push":
+        out["HAS_PUSH"] = 1
+    elif sub == "checkout":
+        for j, a in enumerate(rest):
+            if a in ("-b", "-B") or short_flag_has(a, "bB"):
+                if j + 1 < len(rest):
+                    out["HAS_BRANCH_CREATE"] = 1
+                    out["BRANCH_NAME"] = rest[j + 1]
+                break
+    elif sub == "switch":
+        for j, a in enumerate(rest):
+            if a in ("-c", "-C", "--create", "--force-create") or short_flag_has(a, "cC"):
+                if j + 1 < len(rest):
+                    out["HAS_BRANCH_CREATE"] = 1
+                    out["BRANCH_NAME"] = rest[j + 1]
+                break
+    elif sub == "branch":
+        flags = [a for a in rest if a.startswith("-")]
+        positionals = [a for a in rest if not a.startswith("-")]
+        is_rename = any(f == "--move" or short_flag_has(f, "mM") for f in flags)
+        is_delete = any(f == "--delete" or short_flag_has(f, "dD") for f in flags)
+        if is_rename and not is_delete:
+            if positionals:
+                out["HAS_RENAME"] = 1
+                out["RENAME_TARGET"] = positionals[-1]
+        elif not is_delete and positionals and not flags:
+            out["HAS_BRANCH_CREATE"] = 1
+            out["BRANCH_NAME"] = positionals[0]
+
+for seg in segments:
+    classify(seg)
+
+print("STATUS=OK")
+for k, v in out.items():
+    print(k + "=" + str(v).replace(chr(10), " "))
+' 2>/dev/null || echo "STATUS=AMBIGUOUS")
+
+parse_get() {
+  printf '%s\n' "$PARSED" | sed -n "s/^$1=//p"
+}
+
+PARSE_STATUS=$(parse_get STATUS)
+if [ "$PARSE_STATUS" != "OK" ]; then
+  echo "linear-commit-guard: could not parse command; skipping guard checks (allowing)" >&2
+  exit 0
+fi
+HAS_COMMIT=$(parse_get HAS_COMMIT)
+HAS_PUSH=$(parse_get HAS_PUSH)
+HAS_RENAME=$(parse_get HAS_RENAME)
+RENAME_TARGET=$(parse_get RENAME_TARGET)
+HAS_BRANCH_CREATE=$(parse_get HAS_BRANCH_CREATE)
+BRANCH_NAME=$(parse_get BRANCH_NAME)
+HAS_PR_CREATE=$(parse_get HAS_PR_CREATE)
+
 # ---------- auto-approve safe operations ----------
 # Python-based check: auto-approve read-only git, safe non-git, and routine
 # mutations in linked repos. Handles chained commands (&&/||/;/|) by validating
@@ -152,17 +349,6 @@ def is_safe_linked_repo(part):
 
     return False
 
-def is_branch_rename(part):
-    \"\"\"Check if this is a git branch -m/-M rename.\"\"\"
-    p = part.strip()
-    return bool(re.search(r'\bgit\s+branch\s+-[mM]\b', p))
-
-def get_branch_rename_target(part):
-    \"\"\"Extract the new branch name from git branch -m/-M.\"\"\"
-    p = part.strip()
-    m = re.search(r'\bgit\s+branch\s+-[mM]\s+(?:\S+\s+)?(\S+)', p)
-    return m.group(1) if m else ''
-
 # Split chained commands
 parts = re.split(r'\s*(?:&&|\|\||;|\|)\s*', cmd)
 
@@ -179,19 +365,6 @@ if all_universal:
     print('APPROVE_UNIVERSAL')
     sys.exit(0)
 
-# Check for branch rename (needs special handling)
-has_rename = any(is_branch_rename(p) for p in parts)
-if has_rename:
-    # Extract target branch name and check for issue ID
-    for p in parts:
-        if is_branch_rename(p):
-            target = get_branch_rename_target(p)
-            if target and re.search(r'[A-Z]{2,5}-[0-9]+', target):
-                print('APPROVE_RENAME')
-            else:
-                print('BLOCK_RENAME')
-            sys.exit(0)
-
 # Check if all parts are safe (universal OR linked-repo safe)
 all_safe = all(is_safe_universal(p) or is_safe_linked_repo(p) for p in parts)
 if all_safe:
@@ -200,6 +373,21 @@ if all_safe:
 
 print('PASS')
 " 2>/dev/null || echo "PASS")
+
+# ---------- branch rename handling (parsed, argv-aware) ----------
+# Driven by the invocation parser above, NOT substring matching, so text like
+# "git branch -M x" inside a non-git command argument never triggers this.
+# Renaming TO a default branch name (master/main) is repo wiring during new
+# repo setup, not a feature branch — exempt from the issue-ID rule.
+if [ "$HAS_RENAME" = "1" ]; then
+  if [ "$RENAME_TARGET" = "master" ] || [ "$RENAME_TARGET" = "main" ]; then
+    AUTO_APPROVE_RESULT="APPROVE_RENAME"
+  elif [ -n "$RENAME_TARGET" ] && has_issue_id "$RENAME_TARGET"; then
+    AUTO_APPROVE_RESULT="APPROVE_RENAME"
+  else
+    AUTO_APPROVE_RESULT="BLOCK_RENAME"
+  fi
+fi
 
 case "$AUTO_APPROVE_RESULT" in
   APPROVE_UNIVERSAL)
@@ -222,10 +410,13 @@ esac
 # If the result is one of these, we'll handle it after the repo check below.
 
 # ---------- determine command type ----------
+# Each branch is gated on the argv-aware parser (HAS_* vars) so the regex
+# extraction below only runs when the command truly invokes git/gh with the
+# relevant subcommand in command position.
 CMD_TYPE=""
 EXTRACTED=""
 
-if GIT_CMD="$COMMAND" python3 -c '
+if [ "$HAS_COMMIT" = "1" ] && GIT_CMD="$COMMAND" python3 -c '
 import os, re
 cmd = os.environ["GIT_CMD"]
 DQ = chr(34)
@@ -268,10 +459,10 @@ else:
     print("")
 ' 2>/dev/null || echo "")
 
-elif printf '%s' "$COMMAND" | python3 -c "
+elif [ "$HAS_COMMIT" = "1" ] && printf '%s' "$COMMAND" | python3 -c "
 import sys, re
 cmd = sys.stdin.read()
-if re.search(r'\bgit\s+commit\b', cmd) and 'EOF' in cmd:
+if 'EOF' in cmd:
     sys.exit(0)
 sys.exit(1)
 " 2>/dev/null; then
@@ -282,66 +473,41 @@ cmd = sys.stdin.read()
 print(cmd)
 " 2>/dev/null || echo "$COMMAND")
 
-elif GIT_CMD="$COMMAND" python3 -c '
+elif [ "$HAS_COMMIT" = "1" ] && GIT_CMD="$COMMAND" python3 -c '
 import os, re
 cmd = os.environ["GIT_CMD"]
 DQ = chr(34)
 SQ = chr(39)
-if re.search(r"\bgit\s+commit\b", cmd):
-    has_amend = bool(re.search(r"--amend\b", cmd))
-    has_no_edit = bool(re.search(r"--no-edit\b", cmd))
-    has_msg = bool(re.search(r"-[a-zA-Z]*m[\s" + DQ + SQ + "]", cmd)) or bool(re.search(r"--message[\s=]", cmd))
-    if has_amend and has_no_edit and not has_msg:
-        exit(0)
+has_amend = bool(re.search(r"--amend\b", cmd))
+has_no_edit = bool(re.search(r"--no-edit\b", cmd))
+has_msg = bool(re.search(r"-[a-zA-Z]*m[\s" + DQ + SQ + "]", cmd)) or bool(re.search(r"--message[\s=]", cmd))
+if has_amend and has_no_edit and not has_msg:
+    exit(0)
 exit(1)
 ' 2>/dev/null; then
   CMD_TYPE="amend_no_edit"
 
-elif GIT_CMD="$COMMAND" python3 -c '
+elif [ "$HAS_COMMIT" = "1" ] && GIT_CMD="$COMMAND" python3 -c '
 import os, re
 cmd = os.environ["GIT_CMD"]
 DQ = chr(34)
 SQ = chr(39)
-if re.search(r"\bgit\s+commit\b", cmd):
-    if not re.search(r"-[a-zA-Z]*m[\s" + DQ + SQ + "]", cmd) and not re.search(r"--message[\s=]", cmd) and "EOF" not in cmd:
-        exit(0)
+if not re.search(r"-[a-zA-Z]*m[\s" + DQ + SQ + "]", cmd) and not re.search(r"--message[\s=]", cmd) and "EOF" not in cmd:
+    exit(0)
 exit(1)
 ' 2>/dev/null; then
   CMD_TYPE="bare_commit"
 
-elif printf '%s' "$COMMAND" | python3 -c "
-import sys, re
-cmd = sys.stdin.read()
-if re.search(r'\bgit\s+checkout\s+-b\b', cmd):
-    sys.exit(0)
-if re.search(r'\bgit\s+switch\s+-c\b', cmd):
-    sys.exit(0)
-if re.search(r'\bgit\s+branch\s+(?!-)[^\s-]', cmd):
-    sys.exit(0)
-sys.exit(1)
-" 2>/dev/null; then
-  CMD_TYPE="branch"
-  EXTRACTED=$(printf '%s' "$COMMAND" | python3 -c "
-import sys, re
-cmd = sys.stdin.read().strip()
-m = re.search(r'\bgit\s+checkout\s+-b\s+(\S+)', cmd)
-if not m:
-    m = re.search(r'\bgit\s+switch\s+-c\s+(\S+)', cmd)
-if not m:
-    m = re.search(r'\bgit\s+branch\s+([^\s-]\S*)', cmd)
-if m:
-    print(m.group(1))
-else:
-    print('')
-" 2>/dev/null || echo "")
+elif [ "$HAS_COMMIT" = "1" ]; then
+  # git commit invoked but message style unrecognized — treat as commit and
+  # let the issue-ID check run against the full command string.
+  CMD_TYPE="commit"
 
-elif printf '%s' "$COMMAND" | python3 -c "
-import sys, re
-cmd = sys.stdin.read()
-if re.search(r'\bgh\s+pr\s+create\b', cmd):
-    sys.exit(0)
-sys.exit(1)
-" 2>/dev/null; then
+elif [ "$HAS_BRANCH_CREATE" = "1" ]; then
+  CMD_TYPE="branch"
+  EXTRACTED="$BRANCH_NAME"
+
+elif [ "$HAS_PR_CREATE" = "1" ]; then
   CMD_TYPE="pr"
   EXTRACTED=$(GIT_CMD="$COMMAND" python3 -c '
 import os, re
@@ -374,13 +540,7 @@ else:
     print("")
 ' 2>/dev/null || echo "")
 
-elif printf '%s' "$COMMAND" | python3 -c "
-import sys, re
-cmd = sys.stdin.read()
-if re.search(r'\bgit\s+push\b', cmd):
-    sys.exit(0)
-sys.exit(1)
-" 2>/dev/null; then
+elif [ "$HAS_PUSH" = "1" ]; then
   CMD_TYPE="push"
 fi
 
