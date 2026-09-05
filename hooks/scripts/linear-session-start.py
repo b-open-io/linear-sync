@@ -588,7 +588,7 @@ def _handle_linked_repo(
             f' "args": ["-y", "@anthropic/linear-mcp-server"],'
             f' "env": {{"LINEAR_API_KEY": "${{LINEAR_API_KEY}}"}}}}}}'
             f" — they need a Linear Personal API Key"
-            f" (Settings > API > Personal API keys). After adding, restart"
+            f" (https://linear.app/settings/account/security). Enter the key directly in your editor; never paste it into chat. After adding, restart"
             f" Claude Code. Until installed, the plugin will fall back to"
             f" linear-api.sh for API calls."
         )

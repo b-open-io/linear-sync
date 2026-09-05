@@ -2,6 +2,13 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.28-alpha] - 2026-09-04
+
+### Fixed
+- Keep setup API keys out of chat and use personal account security settings consistently.
+- Discover matching projects before creation, validate project creation responses, and return Linear's actual project URL.
+- Regenerate the Codex API agent with the same setup safeguards.
+
 ## [0.0.27-alpha] - 2026-07-13
 
 ### Fixed
