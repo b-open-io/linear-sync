@@ -7,7 +7,7 @@
 - **curl**
 - **Node.js / npx** (for the Linear MCP server)
 - **GitHub CLI** (`gh`) — optional, required for GitHub Issue Sync
-- A **Linear API key** — create one at Linear > Settings > Security & Access > Personal API Keys > **New API key**. Use "Linear Sync" as the name, **Full access** permissions, and **All teams you have access to**.
+- A **Linear API key** — create one at [Linear > Settings > Account > Security & Access](https://linear.app/settings/account/security) > Personal API Keys > **New API key**. Use "Linear Sync" as the name, **Full access** permissions, and **All teams you have access to**.
 
 ## Install
 
@@ -74,7 +74,9 @@ The standalone installer is safe to re-run. Note: it does not include the PostTo
 
 ## Configure Linear API Key
 
-Export your Linear API key in `~/.zshrc` (or `~/.bashrc`):
+Open `~/.zshrc` (or `~/.bashrc`) in your editor and enter the key directly there. Never paste it into chat or a shell command recorded in the conversation. Keep this file private; do not read its contents back into the agent context.
+
+Add:
 
 ```bash
 export LINEAR_API_KEY="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

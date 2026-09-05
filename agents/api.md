@@ -166,9 +166,9 @@ Example operations:
 
 When the main agent asks you to set up a repo:
 
-1. Check workspace cache. Use cached data if fresh. Otherwise fetch and update cache.
-2. Auto-detect MCP servers: Read `~/.claude/mcp.json` and find servers with `LINEAR_API_KEY` in their env. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "b-open-io" → "linear-acme"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
-3. Return the list to the main agent as a concise formatted list.
+1. Auto-detect MCP servers with a local script that reads `~/.claude/mcp.json` and returns only server names with a configured `LINEAR_API_KEY`; never return credential values or the config contents. Map the chosen workspace to its MCP server name and store as `mcp_server` in the workspace's state entry. If only one Linear server exists, use it. If multiple exist, match by workspace name in server name (e.g., "b-open-io" → "linear-acme"). **Never default to "linear" when multiple servers exist** — ask the main agent to present choices via AskUserQuestion.
+2. Once the workspace server is resolved, fetch fresh projects using **Find Projects** below; setup must not use a stale cache.
+3. Return matches first, or the full project list if there are no matches, to the main agent for user selection.
 4. After the main agent tells you what the dev picked:
    a. Verify/create the label.
    b. Write `.claude/linear-sync.json` in the repo root:
@@ -188,6 +188,23 @@ When the main agent asks you to set up a repo:
    e. Commit the repo config file with the issue ID in the message (e.g., `ENG-123: add Linear sync config`).
    f. **Push the commit** (`git push`). This is critical — other devs need the committed config.
 5. Confirm: "Linked <repo> to <project> in <workspace> with label <label>."
+
+### Find Projects
+
+Use the explicitly resolved workspace server. Fetch `projects(first: 100, after: $after) { nodes { id name url teams { nodes { id name } } } pageInfo { hasNextPage endCursor } }` with a nullable `String` cursor, advancing until `hasNextPage` is false. Fail on GraphQL errors or a missing/non-advancing cursor; an incomplete list is not an empty list. Compare names case-insensitively with the supplied repo name (or requested project name before creation). Return matching IDs, names, teams, and API URLs to the main agent for user selection. Never create or link a project as part of discovery.
+
+### Create Project
+
+Require an explicit creation choice from the main agent, the user-approved name, and a team ID from the selected workspace. Run **Find Projects** again for that name. If a match exists, return it for confirmation rather than creating another project. If discovery fails, stop.
+
+Use GraphQL variables for user input; never interpolate names into the query:
+
+```bash
+QUERY=$(printf 'mutation($input: ProjectCreateInput%s) { projectCreate(input: $input) { success project { id name url } } }' '!')
+bash "$API_SCRIPT" "$MCP_SERVER" "$QUERY" '<JSON variables containing input.name and input.teamIds>'
+```
+
+Encode the variables with a JSON serializer and pass them as one safely quoted argument. A successful HTTP response is not sufficient: require no GraphQL `errors`, `data.projectCreate.success == true`, and non-empty `project.id` and `project.url`. Return the API's ID, name, and URL exactly; never invent a URL. On failure or an ambiguous timeout, do not link the repo or retry creation automatically. Re-query to reconcile any project that may have been created before proposing another attempt.
 
 ### Fetch Issue Summary
 

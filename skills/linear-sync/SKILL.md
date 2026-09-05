@@ -60,10 +60,21 @@ When a `[LINEAR-SETUP]` directive is injected:
 9. The subagent will commit and push `.claude/linear-sync.json` as part of the Link Repo task.
 10. After setup, confirm in one line and proceed with the session kickoff.
 
+### Credential Setup
+
+Never ask the user to paste an API key into chat, a tool argument, or a delegation prompt. Open https://linear.app/settings/account/security for personal API keys (Account > Security & Access); do not use a workspace administration URL.
+
+If credentials are missing, prepare the selected server's configuration with a placeholder such as `YOUR_API_KEY_HERE`, preserving unrelated settings. Edit existing credential files with a local script that reads and merges them without returning their contents to the conversation; do not use Read/cat to inspect secrets. Open the file in the user's editor and ask them to replace the placeholder there and save. Use a user-owned file outside the repo with owner-only permissions. If an editor cannot be opened, give the file path and let the user open it manually. An existing environment-variable reference can stay in place: have the user set its value directly in their shell profile editor.
+
+After the user confirms saving, verify with `linear-api.sh` using a read-only viewer query. Report only authentication success or failure; never print the key, configuration, environment, or authorization headers. Do not pass a key through shell command text or read the saved file back into context.
+
 ### Project Rules
 
-- Multiple repos can share the same project. Include "Create a new project" as the last option.
-- If the dev picks "Create a new project", ask for a name, delegate to the subagent to create it.
+1. Fetch all accessible projects from the selected workspace through the API subagent, following pagination; do not treat a failed or incomplete lookup as no matches. For setup, refresh the project list instead of relying on the workspace cache.
+2. Compare project names case-insensitively with the repo root directory name. For one match, ask “Found existing project <name> — link this repo to it?” before showing the full list. If several match, present their teams and API-returned URLs so the user can choose; never select arbitrarily.
+3. If no match exists or the user declines, show the existing projects with “Create a new project” last. Multiple repos may share a project. Never create a project merely because this repo is unlinked.
+4. Only after the user explicitly chooses creation, collect the name and team, then delegate the **Create Project** task. Recheck the requested name immediately before creation; if it now exists, return the match for confirmation instead of creating a duplicate.
+5. Link the repo only after a successful selection or validated creation. Show the URL returned by Linear; never construct one.
 
 ## Enforcement Rules (Linked Repos Only)
 

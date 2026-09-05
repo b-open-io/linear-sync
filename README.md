@@ -322,7 +322,7 @@ local credential routing are still required for API calls.
 - `curl`
 - Node.js / npx (for the Linear MCP server)
 - GitHub CLI (`gh`) — optional, required for GitHub Issue Sync
-- A Linear API key ([create one here](https://linear.app/settings/api))
+- A Linear API key ([create one here](https://linear.app/settings/account/security))
 
 ### Install via Plugin (Recommended)
 
@@ -365,7 +365,9 @@ The standalone installer copies hooks, the subagent, and scripts to `~/.claude/`
 
 ### Configure Linear API Key
 
-Export your Linear API key in `~/.zshrc` (or `~/.bashrc`):
+Open `~/.zshrc` (or `~/.bashrc`) in your editor and enter the key directly there. Never paste it into chat or a shell command recorded in the conversation. Keep this file private; do not read its contents back into the agent context.
+
+Add:
 
 ```bash
 export LINEAR_API_KEY="lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
