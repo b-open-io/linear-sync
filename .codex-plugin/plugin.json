@@ -1,6 +1,6 @@
 {
   "name": "linear-sync",
-  "version": "0.0.28-alpha",
+  "version": "0.0.29-alpha",
   "description": "Linear API workflows with a portable skill and optional Linear Sync API custom agent for Codex",
   "author": {
     "name": "rohenaz",
@@ -28,6 +28,8 @@
     "websiteURL": "https://github.com/b-open-io/linear-sync",
     "defaultPrompt": [
       "Help me work safely with Linear from Codex."
-    ]
+    ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
   }
 }
