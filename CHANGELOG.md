@@ -2,6 +2,11 @@
 
 All notable changes to linear-sync are documented here.
 
+## [0.0.29-alpha] - 2026-09-10
+
+### Added
+- Codex plugin catalog emblem as `assets/logo.png` and `assets/icon.png`, wired via `interface.logo` and `interface.composerIcon`.
+
 ## [0.0.28-alpha] - 2026-09-04
 
 ### Fixed
